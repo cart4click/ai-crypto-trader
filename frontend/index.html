@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Crypto Trader — Local</title>
+  <link rel="stylesheet" href="/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <img class="logo" src="/ai-crypto-trader.png" alt="AI Crypto Trader" />
+      <div>
+        <h1>AI Crypto Trader <small>· local</small></h1>
+        <span id="mode-badge" class="badge dry">DRY RUN</span>
+        <span id="bot-state" class="badge off">bot paused</span>
+      </div>
+    </div>
+    <div class="conn" id="connections"></div>
+    <div class="actions">
+      <button id="btn-bot" class="btn primary">▶ Start bot</button>
+      <button id="btn-balances" class="btn">💰 Balances</button>
+      <button id="btn-report" class="btn">📊 AI Report</button>
+      <button id="btn-clear-token" class="btn">🔑 Reset Token</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT: market + coins -->
+    <section class="col left">
+      <div class="card">
+        <h3>💰 Wallet</h3>
+        <div id="wallet-box"><span class="muted small">Loading...</span></div>
+      </div>
+      
+      <div class="card">
+        <h3>Market sentiment</h3>
+        <div id="sentiment-box" class="sentiment"><span class="muted">loading…</span></div>
+        <div id="fear-greed" class="muted small"></div>
+        <button id="btn-news-refresh" class="btn tiny">↻ Refresh news</button>
+      </div>
+
+      <div class="card">
+        <h3>Your coins</h3>
+        <div class="add-coin">
+          <input id="new-symbol" placeholder="e.g. SOL or SOLUSDT" />
+          <button id="btn-add" class="btn primary">Add</button>
+        </div>
+        <div class="quick-add" id="quick-add"></div>
+        <div id="coins-list" class="coins-list"><div class="muted small">No coins yet — add one above.</div></div>
+      </div>
+    </section>
+
+    <!-- CENTER: chart + forecast -->
+    <section class="col center">
+      <div class="card">
+        <div class="chart-head">
+          <div>
+            <h2 id="sel-symbol">—</h2>
+            <div id="sel-price" class="price-line">—</div>
+          </div>
+          <div id="forecast-chips" class="chips"></div>
+        </div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div id="ai-note" class="ai-note muted small"></div>
+      </div>
+      <div class="card">
+        <h3>AI forecast — next 24h</h3>
+        <div id="forecast-grid" class="fgrid"><span class="muted small">Select a coin.</span></div>
+      </div>
+
+      <div class="card">
+        <h3>🧠 AI advisor — multi-factor recommendation</h3>
+        <div id="advice-box"><span class="muted small">Select a coin.</span></div>
+      </div>
+
+      <div class="card">
+        <h3>🤖 AI Provider Status</h3>
+        <div id="ai-status-box"><span class="muted small">Loading...</span></div>
+        <button id="btn-ai-status" class="btn tiny">↻ Refresh</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: AI news + pending -->
+    <section class="col right">
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3 style="margin: 0;">⏳ Pending confirmations</h3>
+          <button id="btn-clear-pending" class="btn tiny">🗑️ Clear All</button>
+        </div>
+        <div id="pending-list"><div class="muted small">None.</div></div>
+      </div>
+      <div class="card">
+        <h3>📰 News &amp; AI analysis</h3>
+        <div id="news-list"><div class="muted small">loading…</div></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="card">
+      <h3>Trade log</h3>
+      <table id="trades-table">
+        <thead><tr><th>Time</th><th>Side</th><th>Coin</th><th>Qty</th><th>Price</th><th>Value</th><th>PnL</th><th>Mode</th><th>Decision</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </footer>
+
+  <!-- Chat Interface -->
+  <div id="chat-widget" class="chat-widget minimized">
+    <div class="chat-header" id="chat-header">
+      <div class="chat-icon-wrapper">
+        <img class="chat-icon" src="/ai-crypto-trader.png" alt="AI assistant" />
+        <span class="chat-label">AI-CHAT</span>
+      </div>
+      <span class="chat-title">AI Assistant</span>
+      <button id="chat-toggle" class="btn tiny">−</button>
+    </div>
+    <div class="chat-body">
+      <div id="chat-messages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input id="chat-input-field" type="text" placeholder="Ask about trading, get reports, or give commands..." />
+        <button id="chat-send" class="btn primary">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
