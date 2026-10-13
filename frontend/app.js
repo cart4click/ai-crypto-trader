@@ -13,6 +13,7 @@ function clearToken() {
 }
 let coinsCache = {};
 let forecastCache = null;
+const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 
 const QUICK = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"];
 
@@ -20,7 +21,7 @@ const QUICK = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"];
 async function api(path, opts = {}) {
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
   if (TOKEN) opts.headers["X-App-Token"] = TOKEN;
-  const res = await fetch(path, opts);
+  const res = await fetch(`${API_BASE_URL}${path}`, opts);
   if (res.status === 401) {
     // Clear the cached token since it's not working
     localStorage.removeItem("app_token");
@@ -282,13 +283,22 @@ async function refreshWallet() {
 
 /* ----------------------------------------------------------------- forecast */
 async function refreshForecast() {
-  if (!selected) return;
+  if (!selected) {
+    setChartMessage("Add a coin to load its live market chart.");
+    return;
+  }
+  const symbol = selected;
+  setChartMessage("Loading live market chart…");
   try {
-    const f = await api(`/api/forecast/${selected}`);
+    const f = await api(`/api/forecast/${symbol}`);
+    if (symbol !== selected) return;
     forecastCache = f;
     renderForecast(f);
     renderChart(f);
-  } catch (e) { console.warn("forecast:", e.message); }
+  } catch (e) {
+    console.warn("forecast:", e.message);
+    if (symbol === selected) setChartMessage(`Chart unavailable: ${e.message}`);
+  }
   refreshAdvice();
   refreshAIStatus();
 }
@@ -376,6 +386,10 @@ function renderForecast(f) {
 }
 
 function renderChart(f) {
+  if (!window.Chart) {
+    setChartMessage("Chart library did not load. Check your connection and reload.");
+    return;
+  }
   const H = f.history_closes.length;
   const labels = [...f.history_times, ...f.forecast_times].map(ms =>
     new Date(ms).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit" }));
@@ -418,6 +432,14 @@ function renderChart(f) {
   };
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
   else chart = new Chart($("#chart"), cfg);
+  setChartMessage("");
+}
+
+function setChartMessage(message) {
+  const box = $("#chart-message");
+  if (!box) return;
+  box.textContent = message;
+  box.hidden = !message;
 }
 
 /* --------------------------------------------------------------------- news */

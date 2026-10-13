@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -43,6 +44,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI Crypto Trader", version="1.0.0", lifespan=lifespan)
+
+if settings.app_cors_origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=settings.app_cors_origins,
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-App-Token"],
+    )
 
 
 @app.middleware("http")

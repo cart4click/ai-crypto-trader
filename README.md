@@ -111,6 +111,25 @@ DRY_RUN default.
 - Telegram is a private channel via chat-id whitelist.
 - All external calls are HTTPS (Binance, Telegram, news, LLM).
 
+## Public website deployment
+
+The included GitHub Actions workflow publishes only the `frontend/` directory
+to GitHub Pages. GitHub Pages cannot run the FastAPI app, so the dashboard API
+and live chart require a separate server running `run.py`.
+
+1. Deploy the FastAPI app on a server or Python application host with a public
+   **HTTPS** URL. Keep `APP_HOST=0.0.0.0`, set a long `APP_TOKEN`, and set
+   `APP_CORS_ORIGINS=https://www.cart4click.com,https://cart4click.com`.
+2. In `frontend/config.js`, set `window.API_BASE_URL` to that backend's HTTPS
+   origin (for example `https://api.example.com`), then publish the Pages site.
+3. In GitHub, open **Settings → Pages** and enable **Enforce HTTPS** for the
+   custom domain. In IONOS, keep the domain's DNS pointed at GitHub Pages; the
+   certificate and HTTP-to-HTTPS redirect are managed by GitHub Pages.
+
+Do not put Binance, Telegram, or AI provider credentials in `frontend/` or
+`config.js`; those belong only in the backend's environment. The chart displays
+an API error directly when the backend is missing or unreachable.
+
 ## Project layout
 
 ```
