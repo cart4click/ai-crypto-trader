@@ -114,14 +114,18 @@ DRY_RUN default.
 ## Public website deployment
 
 The included GitHub Actions workflow publishes only the `frontend/` directory
-to GitHub Pages. GitHub Pages cannot run the FastAPI app, so the dashboard API
-and live chart require a separate server running `run.py`.
+to GitHub Pages. The price chart reads public hourly candles from Binance and
+works without the app server. GitHub Pages cannot run the FastAPI app, so
+watchlists, forecasts, trading controls, and other dashboard API features
+require a separate server running `run.py`.
 
 1. Deploy the FastAPI app on a server or Python application host with a public
    **HTTPS** URL. Keep `APP_HOST=0.0.0.0`, set a long `APP_TOKEN`, and set
    `APP_CORS_ORIGINS=https://www.cart4click.com,https://cart4click.com`.
 2. In `frontend/config.js`, set `window.API_BASE_URL` to that backend's HTTPS
-   origin (for example `https://api.example.com`), then publish the Pages site.
+   origin (for example `https://api.example.com`), then publish the Pages site
+   to enable the dashboard API features. Without it, quick coin buttons still
+   let visitors select symbols for the public Binance chart.
 3. In GitHub, open **Settings → Pages** and enable **Enforce HTTPS** for the
    custom domain. In IONOS, keep the domain's DNS pointed at GitHub Pages; the
    certificate and HTTP-to-HTTPS redirect are managed by GitHub Pages.

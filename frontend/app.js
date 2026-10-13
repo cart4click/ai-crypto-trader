@@ -2,7 +2,7 @@
 const $ = (s) => document.querySelector(s);
 let TOKEN = localStorage.getItem("app_token") || "";
 let chart = null;
-let selected = localStorage.getItem("selected_symbol") || "";
+let selected = localStorage.getItem("selected_symbol") || "BTCUSDT";
 
 // Function to clear cached token
 function clearToken() {
@@ -205,12 +205,22 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
 });
 
 async function addCoin(sym) {
+  const symbol = sym.toUpperCase().endsWith("USDT") ? sym.toUpperCase() : `${sym.toUpperCase()}USDT`;
   try {
-    const r = await api("/api/coins", { method: "POST", body: JSON.stringify({ symbol: sym }) });
+    const r = await api("/api/coins", { method: "POST", body: JSON.stringify({ symbol }) });
     toast(`${r.symbol} added — anchored at ${fmtUSD(r.anchor_price)}`);
     $("#new-symbol").value = "";
     await refreshCoins();
-  } catch (e) { toast(e.message, true); }
+  } catch (e) {
+    if (e.message.startsWith("HTTP 404")) {
+      selected = symbol;
+      localStorage.setItem("selected_symbol", selected);
+      await refreshForecast();
+      toast(`${symbol} selected for the live chart`);
+      return;
+    }
+    toast(e.message, true);
+  }
 }
 $("#btn-add").addEventListener("click", () => { const v = $("#new-symbol").value.trim(); if (v) addCoin(v); });
 $("#new-symbol").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#btn-add").click(); });
@@ -297,7 +307,13 @@ async function refreshForecast() {
     renderChart(f);
   } catch (e) {
     console.warn("forecast:", e.message);
-    if (symbol === selected) setChartMessage(`Chart unavailable: ${e.message}`);
+    if (symbol === selected) {
+      try {
+        await renderPublicMarketChart(symbol);
+      } catch (marketError) {
+        setChartMessage(`Chart unavailable: ${marketError.message}`);
+      }
+    }
   }
   refreshAdvice();
   refreshAIStatus();
@@ -427,6 +443,54 @@ function renderChart(f) {
       scales: {
         x: { ticks: { color: "#8b95a7", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#17202f" } },
         y: { ticks: { color: "#8b95a7", font: { size: 10 }, callback: (v) => "$" + Number(v).toLocaleString() }, grid: { color: "#17202f" } },
+      },
+    },
+  };
+  if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
+  else chart = new Chart($("#chart"), cfg);
+  setChartMessage("");
+}
+
+async function renderPublicMarketChart(symbol) {
+  if (!window.Chart) throw new Error("Chart library did not load. Reload the page to try again.");
+  if (!/^[A-Z0-9]{5,20}$/.test(symbol)) throw new Error("Invalid market symbol.");
+
+  const endpoint = new URL("https://api.binance.com/api/v3/klines");
+  endpoint.search = new URLSearchParams({ symbol, interval: "1h", limit: "168" });
+  const response = await fetch(endpoint, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Binance returned HTTP ${response.status}.`);
+  const candles = await response.json();
+  if (!Array.isArray(candles) || candles.length < 2) throw new Error(`No candle data is available for ${symbol}.`);
+  if (symbol !== selected) return;
+
+  const labels = candles.map(candle => new Date(candle[0]).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "2-digit"
+  }));
+  const closes = candles.map(candle => Number(candle[4]));
+  const latestPrice = closes[closes.length - 1];
+  const previousPrice = closes[closes.length - 2];
+  const changePct = previousPrice ? (latestPrice / previousPrice - 1) * 100 : 0;
+  $("#sel-symbol").textContent = symbol;
+  $("#sel-price").innerHTML = `${fmtUSD(latestPrice, 2)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} 1h</span>`;
+  $("#forecast-chips").innerHTML = '<span class="chip">Live Binance market data</span>';
+  $("#forecast-grid").innerHTML = '<span class="muted small">Forecast unavailable until the app API is connected.</span>';
+
+  const cfg = {
+    type: "line",
+    data: { labels, datasets: [{
+      label: `${symbol} · hourly close`, data: closes,
+      borderColor: "#3b82f6", borderWidth: 2, pointRadius: 0, tension: 0.2,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#8b95a7", boxWidth: 12, font: { size: 10 } } },
+        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${fmtUSD(context.parsed.y, 2)}` } },
+      },
+      scales: {
+        x: { ticks: { color: "#8b95a7", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#17202f" } },
+        y: { ticks: { color: "#8b95a7", font: { size: 10 }, callback: value => "$" + Number(value).toLocaleString() }, grid: { color: "#17202f" } },
       },
     },
   };
