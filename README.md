@@ -115,9 +115,10 @@ DRY_RUN default.
 
 The included GitHub Actions workflow publishes only the `frontend/` directory
 to GitHub Pages. The price chart reads public hourly candles from Binance and
-works without the app server. GitHub Pages cannot run the FastAPI app, so
-watchlists, forecasts, trading controls, and other dashboard API features
-require a separate server running `run.py`.
+works without the app server. The static site also has a browser-saved watchlist
+of popular Binance USDT pairs and can load their public prices without an API
+key. GitHub Pages cannot run the FastAPI app, so forecasts, trading controls,
+and other dashboard API features require a separate server running `run.py`.
 
 1. Deploy the FastAPI app on a server or Python application host with a public
    **HTTPS** URL. Keep `APP_HOST=0.0.0.0`, set a long `APP_TOKEN`, and set

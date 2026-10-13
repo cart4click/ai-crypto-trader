@@ -15,7 +15,25 @@ let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 
-const QUICK = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"];
+const QUICK = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"];
+const DEFAULT_WATCHLIST = QUICK.map(base => `${base}USDT`);
+const WATCHLIST_KEY = "ai-trader-watchlist";
+let localWatchlist = loadLocalWatchlist();
+let publicWatchlistPrices = {};
+let publicWatchlistFetchedAt = 0;
+
+function loadLocalWatchlist() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "null");
+    return Array.isArray(saved) ? [...new Set(saved.filter(s => /^[A-Z0-9]{5,20}$/.test(s)))].slice(0, 50) : DEFAULT_WATCHLIST;
+  } catch {
+    return DEFAULT_WATCHLIST;
+  }
+}
+
+function saveLocalWatchlist() {
+  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(localWatchlist));
+}
 
 /* ------------------------------------------------------------------ helpers */
 async function api(path, opts = {}) {
@@ -110,7 +128,8 @@ async function refreshStatus() {
 /* -------------------------------------------------------------------- coins */
 async function refreshCoins() {
   let list;
-  try { list = await api("/api/coins"); } catch (e) { return; }
+  try { list = await api("/api/coins"); }
+  catch (e) { await refreshPublicWatchlist(); return; }
   coinsCache = {};
   for (const c of list) coinsCache[c.symbol] = c;
 
@@ -130,6 +149,44 @@ async function refreshCoins() {
     $("#sel-price").textContent = "—";
   }
   if (selected && selected !== prevSelected) refreshForecast();
+}
+
+async function refreshPublicWatchlist(force = false) {
+  const box = $("#coins-list");
+  if (!localWatchlist.length) {
+    box.innerHTML = '<div class="muted small">Your watchlist is empty. Add a USDT pair above.</div>';
+    return;
+  }
+
+  if (force || Date.now() - publicWatchlistFetchedAt > 20000) {
+    const endpoint = new URL("https://api.binance.com/api/v3/ticker/24hr");
+    endpoint.searchParams.set("symbols", JSON.stringify(localWatchlist));
+    try {
+      const response = await fetch(endpoint, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Binance returned HTTP ${response.status}.`);
+      const markets = await response.json();
+      publicWatchlistPrices = Object.fromEntries(markets.map(m => [m.symbol, {
+        price: Number(m.lastPrice), change_24h_pct: Number(m.priceChangePercent),
+      }]));
+      publicWatchlistFetchedAt = Date.now();
+    } catch (e) {
+      console.warn("watchlist market data:", e.message);
+      if (!Object.keys(publicWatchlistPrices).length) {
+        box.innerHTML = `<div class="muted small">Could not load watchlist prices: ${esc(e.message)}</div>`;
+        return;
+      }
+    }
+  }
+
+  box.innerHTML = localWatchlist.map(symbol => {
+    const market = publicWatchlistPrices[symbol];
+    const base = symbol.slice(0, -4);
+    return `<div class="coin-card watch-card ${symbol === selected ? "selected" : ""}" data-sym="${esc(symbol)}">
+      <div class="coin-top"><b>${esc(base)} / USDT</b><span class="coin-price">${market ? fmtUSD(market.price) : "—"}</span></div>
+      <div class="coin-sub"><span class="${cls(market?.change_24h_pct ?? 0)}">${fmtPct(market?.change_24h_pct)} 24h</span>
+        <button class="btn tiny" data-act="remove-watch" title="Remove ${esc(symbol)} from watchlist">Remove</button></div>
+    </div>`;
+  }).join("");
 }
 
 function coinCard(c) {
@@ -181,7 +238,11 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
     return;
   }
   try {
-    if (act === "save") {
+    if (act === "remove-watch") {
+      localWatchlist = localWatchlist.filter(symbol => symbol !== sym);
+      saveLocalWatchlist();
+      await refreshPublicWatchlist(true);
+    } else if (act === "save") {
       const fields = {};
       card.querySelectorAll("input[data-f]").forEach(i => fields[i.dataset.f] = parseFloat(i.value));
       await api(`/api/coins/${sym}`, { method: "PATCH", body: JSON.stringify(fields) });
@@ -205,7 +266,9 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
 });
 
 async function addCoin(sym) {
-  const symbol = sym.toUpperCase().endsWith("USDT") ? sym.toUpperCase() : `${sym.toUpperCase()}USDT`;
+  const input = String(sym).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const base = ({ SOLANA: "SOL", BITCOIN: "BTC", ETHEREUM: "ETH" })[input.replace(/USDT$/, "")] || input.replace(/USDT$/, "");
+  const symbol = `${base}USDT`;
   try {
     const r = await api("/api/coins", { method: "POST", body: JSON.stringify({ symbol }) });
     toast(`${r.symbol} added — anchored at ${fmtUSD(r.anchor_price)}`);
@@ -213,8 +276,15 @@ async function addCoin(sym) {
     await refreshCoins();
   } catch (e) {
     if (e.message.startsWith("HTTP 404")) {
+      if (!localWatchlist.includes(symbol)) {
+        const check = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`);
+        if (!check.ok) { toast(`${symbol} is not an available Binance USDT market`, true); return; }
+        localWatchlist = [...localWatchlist, symbol].slice(-50);
+        saveLocalWatchlist();
+      }
       selected = symbol;
       localStorage.setItem("selected_symbol", selected);
+      await refreshPublicWatchlist(true);
       await refreshForecast();
       toast(`${symbol} selected for the live chart`);
       return;
@@ -224,7 +294,7 @@ async function addCoin(sym) {
 }
 $("#btn-add").addEventListener("click", () => { const v = $("#new-symbol").value.trim(); if (v) addCoin(v); });
 $("#new-symbol").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#btn-add").click(); });
-$("#quick-add").innerHTML = QUICK.map(s => `<button data-s="${s}">${s}</button>`).join("");
+$("#quick-add").innerHTML = QUICK.map(s => `<button data-s="${s}">${s}/USDT</button>`).join("");
 $("#quick-add").addEventListener("click", (e) => { if (e.target.dataset.s) addCoin(e.target.dataset.s); });
 
 /* --------------------------------------------------------------------- wallet */
