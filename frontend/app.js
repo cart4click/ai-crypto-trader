@@ -65,6 +65,10 @@ const fmtUSD = (x, d) =>
     maximumFractionDigits: d ?? (Math.abs(x) >= 1000 ? 0 : 2),
     minimumFractionDigits: Math.abs(x) >= 1000 ? 0 : 2,
   });
+const fmtMarketPrice = (x) => {
+  const value = Math.abs(Number(x));
+  return fmtUSD(x, value >= 100 ? 2 : value >= 1 ? 4 : value >= 0.01 ? 6 : 10);
+};
 const fmtPct = (x) => (x == null || isNaN(x)) ? "—" : (x >= 0 ? "+" : "") + Number(x).toFixed(2) + "%";
 const cls = (x) => (x >= 0 ? "up" : "down");
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -182,7 +186,7 @@ async function refreshPublicWatchlist(force = false) {
     const market = publicWatchlistPrices[symbol];
     const base = symbol.slice(0, -4);
     return `<div class="coin-card watch-card ${symbol === selected ? "selected" : ""}" data-sym="${esc(symbol)}">
-      <div class="coin-top"><b>${esc(base)} / USDT</b><span class="coin-price">${market ? fmtUSD(market.price) : "—"}</span></div>
+      <div class="coin-top"><b>${esc(base)} / USDT</b><span class="coin-price">${market ? fmtMarketPrice(market.price) : "—"}</span></div>
       <div class="coin-sub"><span class="${cls(market?.change_24h_pct ?? 0)}">${fmtPct(market?.change_24h_pct)} 24h</span>
         <button class="btn tiny" data-act="remove-watch" title="Remove ${esc(symbol)} from watchlist">Remove</button></div>
     </div>`;
@@ -541,7 +545,7 @@ async function renderPublicMarketChart(symbol) {
   const previousPrice = closes[closes.length - 2];
   const changePct = previousPrice ? (latestPrice / previousPrice - 1) * 100 : 0;
   $("#sel-symbol").textContent = symbol;
-  $("#sel-price").innerHTML = `${fmtUSD(latestPrice, 2)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} 1h</span>`;
+  $("#sel-price").innerHTML = `${fmtMarketPrice(latestPrice)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} 1h</span>`;
   $("#forecast-chips").innerHTML = '<span class="chip">Live Binance market data</span>';
   $("#forecast-grid").innerHTML = '<span class="muted small">Forecast unavailable until the app API is connected.</span>';
 
@@ -556,11 +560,11 @@ async function renderPublicMarketChart(symbol) {
       interaction: { mode: "index", intersect: false },
       plugins: {
         legend: { position: "bottom", labels: { color: "#8b95a7", boxWidth: 12, font: { size: 10 } } },
-        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${fmtUSD(context.parsed.y, 2)}` } },
+        tooltip: { callbacks: { label: context => `${context.dataset.label}: ${fmtMarketPrice(context.parsed.y)}` } },
       },
       scales: {
         x: { ticks: { color: "#8b95a7", maxTicksLimit: 10, font: { size: 10 } }, grid: { color: "#17202f" } },
-        y: { ticks: { color: "#8b95a7", font: { size: 10 }, callback: value => "$" + Number(value).toLocaleString() }, grid: { color: "#17202f" } },
+        y: { ticks: { color: "#8b95a7", font: { size: 10 }, callback: value => fmtMarketPrice(value) }, grid: { color: "#17202f" } },
       },
     },
   };
