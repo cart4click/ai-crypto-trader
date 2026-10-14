@@ -4,6 +4,9 @@ let TOKEN = localStorage.getItem("app_token") || "";
 let chart = null;
 let selected = localStorage.getItem("selected_symbol") || "BTCUSDT";
 let chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "candles" : "line";
+const CHART_INTERVALS = ["15m", "30m", "1h", "4h", "1d"];
+let chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval"))
+  ? localStorage.getItem("market-chart-interval") : "1h";
 let marketRefreshInFlight = false;
 let forecastApiUnavailable = false;
 
@@ -403,7 +406,7 @@ async function refreshForecast(refreshExtras = true) {
   }
   const symbol = selected;
   if (!chart) setChartMessage("Loading live market chart…");
-  if (chartStyle === "candles") {
+  if (chartStyle === "candles" || chartInterval !== "1h") {
     try { await renderPublicMarketChart(symbol); }
     catch (e) { setChartMessage(`Chart unavailable: ${e.message}`); }
     return;
@@ -415,6 +418,7 @@ async function refreshForecast(refreshExtras = true) {
     forecastCache = f;
     renderForecast(f);
     renderChart(f);
+    await refreshSupertrendDashboard(symbol);
   } catch (e) {
     console.warn("forecast:", e.message);
     if (symbol === selected) {
@@ -512,46 +516,73 @@ function renderForecast(f) {
     <div class="fcell"><div class="k">Predicted high (24h)</div><div class="v up">${fmtUSD(f.predicted_high)}</div><div class="s">95th percentile of 2,000 simulated paths</div></div>
     <div class="fcell"><div class="k">Median in 24h</div><div class="v">${fmtUSD(f.median_24h)}</div><div class="s">${fmtPct((f.median_24h / f.last_close - 1) * 100)} from now</div></div>
     <div class="fcell"><div class="k">Now</div><div class="v">${fmtUSD(f.last_close)}</div><div class="s">EMA20 ${fmtUSD(ind.ema20)} · EMA50 ${fmtUSD(ind.ema50)}</div></div>`;
-  const closes = f.history_closes || [];
-  renderMarketIndicators(closes, f.last_close);
 }
 
-function calculateEma(values, period = 20) {
-  if (values.length < period) return [];
-  const multiplier = 2 / (period + 1);
-  let ema = values.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
-  const result = Array(period - 1).fill(null);
-  result.push(ema);
-  for (let i = period; i < values.length; i++) {
-    ema = values[i] * multiplier + ema * (1 - multiplier);
-    result.push(ema);
+function calculateSupertrend(candles, period = 10, multiplier = 3) {
+  if (candles.length < period + 1) return null;
+  const trueRanges = candles.map((candle, i) => {
+    if (!i) return candle.high - candle.low;
+    const previousClose = candles[i - 1].close;
+    return Math.max(candle.high - candle.low, Math.abs(candle.high - previousClose), Math.abs(candle.low - previousClose));
+  });
+  const atr = Array(candles.length).fill(null);
+  atr[period - 1] = trueRanges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+  for (let i = period; i < candles.length; i++) {
+    atr[i] = (atr[i - 1] * (period - 1) + trueRanges[i]) / period;
   }
-  return result;
-}
 
-function calculateRsi(values, period = 14) {
-  if (values.length <= period) return null;
-  let gains = 0, losses = 0;
-  for (let i = values.length - period; i < values.length; i++) {
-    const change = values[i] - values[i - 1];
-    if (change > 0) gains += change;
-    else losses -= change;
+  let upperBand = null, lowerBand = null, direction = null;
+  for (let i = period - 1; i < candles.length; i++) {
+    const midpoint = (candles[i].high + candles[i].low) / 2;
+    const basicUpper = midpoint + multiplier * atr[i];
+    const basicLower = midpoint - multiplier * atr[i];
+    const previousClose = i ? candles[i - 1].close : candles[i].close;
+    const nextUpper = upperBand == null || basicUpper < upperBand || previousClose > upperBand ? basicUpper : upperBand;
+    const nextLower = lowerBand == null || basicLower > lowerBand || previousClose < lowerBand ? basicLower : lowerBand;
+    if (direction == null) direction = candles[i].close >= midpoint ? "Bullish" : "Bearish";
+    else if (direction === "Bearish" && candles[i].close > nextUpper) direction = "Bullish";
+    else if (direction === "Bullish" && candles[i].close < nextLower) direction = "Bearish";
+    upperBand = nextUpper;
+    lowerBand = nextLower;
   }
-  if (!losses) return gains ? 100 : 50;
-  const relativeStrength = (gains / period) / (losses / period);
-  return 100 - 100 / (1 + relativeStrength);
+  return direction;
 }
 
-function renderMarketIndicators(closes, currentPrice = closes.at(-1)) {
-  if (!closes?.length || !Number.isFinite(Number(currentPrice))) return;
-  const emaValues = calculateEma(closes);
-  const ema20 = emaValues.at(-1);
-  const rsi14 = calculateRsi(closes);
-  const trend = ema20 == null ? "building history" : Number(currentPrice) >= ema20 ? "price above EMA20" : "price below EMA20";
-  const momentum = rsi14 == null ? "building history" : rsi14 >= 70 ? "overbought range" : rsi14 <= 30 ? "oversold range" : "neutral range";
-  $("#market-indicators").innerHTML = `
-    <div class="market-indicator">Trend · EMA 20: <b>${ema20 == null ? "—" : fmtMarketPrice(ema20)}</b> <span>${trend}</span></div>
-    <div class="market-indicator">Momentum · RSI 14: <b>${rsi14 == null ? "—" : rsi14.toFixed(1)}</b> <span>${momentum}</span></div>`;
+function renderSupertrendDashboard(results) {
+  const rows = ["15m", "30m", "1h", "4h"].map(interval => {
+    const state = results[interval];
+    const label = state === "Bullish" || state === "Bearish" ? state : state || "Unavailable";
+    const css = state === "Bullish" ? "bullish" : state === "Bearish" ? "bearish" : "unavailable";
+    return `<tr><td>${interval}</td><td><span class="supertrend-state ${css}">${label}</span></td></tr>`;
+  }).join("");
+  $("#supertrend-dashboard").innerHTML = `<table aria-label="Multi-timeframe Supertrend dashboard">
+    <caption>Supertrend · ATR 10 / factor 3</caption>
+    <thead><tr><th>Timeframe</th><th>Trend</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function fetchBinanceCandles(symbol, interval, limit = 168) {
+  const endpoint = new URL("https://api.binance.com/api/v3/klines");
+  endpoint.search = new URLSearchParams({ symbol, interval, limit: String(limit) });
+  const response = await fetch(endpoint, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Binance returned HTTP ${response.status}.`);
+  const values = await response.json();
+  return values.map(candle => ({
+    time: Number(candle[0]), open: Number(candle[1]), high: Number(candle[2]),
+    low: Number(candle[3]), close: Number(candle[4]),
+  }));
+}
+
+async function refreshSupertrendDashboard(symbol, existing = {}) {
+  const intervals = ["15m", "30m", "1h", "4h"];
+  const settled = await Promise.allSettled(intervals.map(async interval => {
+    const candles = existing[interval] || await fetchBinanceCandles(symbol, interval, 120);
+    return [interval, calculateSupertrend(candles) || "Unavailable"];
+  }));
+  if (symbol !== selected) return;
+  const results = Object.fromEntries(settled.map((result, index) => [
+    intervals[index], result.status === "fulfilled" ? result.value[1] : "Unavailable",
+  ]));
+  renderSupertrendDashboard(results);
 }
 
 function renderChart(f) {
@@ -565,13 +596,10 @@ function renderChart(f) {
   const filler = (arr, off) => labels.map((_, i) => (i >= off && i < off + arr.length) ? arr[i - off] : null);
   const flat = (val, off) => labels.map((_, i) => (i >= off ? val : null));
   const coin = coinsCache[selected] || {};
-  const ema20 = calculateEma(f.history_closes);
 
   const ds = [
     { label: "Price 7d", data: [...f.history_closes, ...Array(f.forecast_times.length).fill(null)],
       borderColor: "#3b82f6", borderWidth: 2, pointRadius: 0, tension: 0.2 },
-    { label: "EMA 20", data: [...ema20, ...Array(f.forecast_times.length).fill(null)],
-      borderColor: "#f59e0b", borderWidth: 1.5, pointRadius: 0, tension: 0.15 },
     { label: "AI median path", data: filler(f.median_path, H),
       borderColor: "#a855f7", borderDash: [6, 4], borderWidth: 2, pointRadius: 0, tension: 0.3 },
     { label: "95% band high", data: filler(f.band_high, H),
@@ -643,37 +671,34 @@ async function renderPublicMarketChart(symbol) {
   if (!window.Chart) throw new Error("Chart library did not load. Reload the page to try again.");
   if (!/^[A-Z0-9]{5,20}$/.test(symbol)) throw new Error("Invalid market symbol.");
 
-  const endpoint = new URL("https://api.binance.com/api/v3/klines");
-  endpoint.search = new URLSearchParams({ symbol, interval: "1h", limit: "168" });
-  const response = await fetch(endpoint, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Binance returned HTTP ${response.status}.`);
-  const candles = await response.json();
-  if (!Array.isArray(candles) || candles.length < 2) throw new Error(`No candle data is available for ${symbol}.`);
+  const dashboardIntervals = ["15m", "30m", "1h", "4h"];
+  const intervals = [...new Set([...dashboardIntervals, chartInterval])];
+  const fetched = await Promise.allSettled(intervals.map(interval => fetchBinanceCandles(symbol, interval, 168)));
+  const candleData = Object.fromEntries(fetched.map((result, index) => [
+    intervals[index], result.status === "fulfilled" ? result.value : null,
+  ]));
+  const candles = candleData[chartInterval];
+  if (!candles?.length) throw new Error(`No ${chartInterval} candle data is available for ${symbol}.`);
   if (symbol !== selected) return;
 
-  const marketCandles = candles.map(candle => ({
-    open: Number(candle[1]), high: Number(candle[2]), low: Number(candle[3]), close: Number(candle[4]),
+  await refreshSupertrendDashboard(symbol, candleData);
+  const labels = candles.map(candle => new Date(candle.time).toLocaleString("en-US", {
+    month: "short", day: "numeric", hour: "2-digit", minute: chartInterval.endsWith("m") ? "2-digit" : undefined,
   }));
-  const labels = candles.map(candle => new Date(candle[0]).toLocaleString("en-US", {
-    month: "short", day: "numeric", hour: "2-digit"
-  }));
-  const closes = marketCandles.map(candle => candle.close);
-  const ema20 = calculateEma(closes);
+  const closes = candles.map(candle => candle.close);
   const latestPrice = closes[closes.length - 1];
   const previousPrice = closes[closes.length - 2];
   const changePct = previousPrice ? (latestPrice / previousPrice - 1) * 100 : 0;
   $("#sel-symbol").textContent = symbol;
-  $("#sel-price").innerHTML = `${fmtMarketPrice(latestPrice)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} 1h</span>`;
-  $("#forecast-chips").innerHTML = `<span class="chip">Live Binance market data · 1h candles</span>`;
+  $("#sel-price").innerHTML = `${fmtMarketPrice(latestPrice)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} ${chartInterval}</span>`;
+  $("#forecast-chips").innerHTML = `<span class="chip">Live Binance market data · ${chartInterval} candles</span>`;
   $("#forecast-grid").innerHTML = '<span class="muted small">Forecast unavailable until the app API is connected.</span>';
-  renderMarketIndicators(closes, latestPrice);
 
   const cfg = {
     type: "line",
     data: { labels, datasets: [
-      { label: `${symbol} · hourly close`, data: closes,
+      { label: `${symbol} · ${chartInterval} close`, data: closes,
         borderColor: chartStyle === "candles" ? "transparent" : "#3b82f6", borderWidth: 2, pointRadius: 0, tension: 0.2 },
-      { label: "EMA 20", data: ema20, borderColor: "#f59e0b", borderWidth: 1.5, pointRadius: 0, tension: 0.15 },
     ] },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -690,7 +715,7 @@ async function renderPublicMarketChart(symbol) {
   };
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
-  chart.$marketCandles = chartStyle === "candles" ? marketCandles : null;
+  chart.$marketCandles = chartStyle === "candles" ? candles : null;
   chart.update();
   $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
   setChartMessage("");
@@ -1048,9 +1073,15 @@ async function refreshMarket(force = false) {
 }
 
 $("#chart-style").value = chartStyle;
+$("#chart-interval").value = chartInterval;
 $("#chart-style").addEventListener("change", (event) => {
   chartStyle = event.target.value === "candles" ? "candles" : "line";
   localStorage.setItem("market-chart-style", chartStyle);
+  refreshMarket(true);
+});
+$("#chart-interval").addEventListener("change", (event) => {
+  chartInterval = CHART_INTERVALS.includes(event.target.value) ? event.target.value : "1h";
+  localStorage.setItem("market-chart-interval", chartInterval);
   refreshMarket(true);
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));

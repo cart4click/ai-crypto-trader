@@ -171,9 +171,15 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
 .market-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
 .market-select { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 5px 8px; }
-.market-indicators { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-.market-indicator { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 11px; color: var(--muted); }
-.market-indicator b { color: var(--text); }
+#supertrend-dashboard { display: inline-block; margin-top: 10px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--card2); }
+#supertrend-dashboard table { width: auto; min-width: 190px; font-size: 11px; }
+#supertrend-dashboard caption { color: var(--muted); padding: 5px 9px 2px; font-size: 10px; text-align: left; }
+#supertrend-dashboard th, #supertrend-dashboard td { padding: 4px 9px; border-bottom: 1px solid var(--border); }
+#supertrend-dashboard th { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.supertrend-state { display: inline-block; min-width: 57px; text-align: center; border-radius: 4px; padding: 2px 5px; font-weight: 700; }
+.supertrend-state.bullish { color: #bbf7d0; background: rgba(34,197,94,.22); }
+.supertrend-state.bearish { color: #fecaca; background: rgba(239,68,68,.22); }
+.supertrend-state.loading, .supertrend-state.unavailable { color: var(--muted); background: rgba(148,163,184,.12); }
 .chart-wrap { position: relative; }
 .chart-message { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; pointer-events: none; }
 .chart-message[hidden] { display: none; }
