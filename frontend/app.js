@@ -431,6 +431,7 @@ async function refreshForecast(refreshExtras = true) {
     forecastCache = f;
     renderForecast(f);
     renderChart(f);
+    renderIndicatorReadouts((f.history_closes || []).map(close => ({ close })));
     await refreshSupertrendDashboard(symbol);
   } catch (e) {
     console.warn("forecast:", e.message);
