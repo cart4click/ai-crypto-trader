@@ -15,17 +15,33 @@ let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 
-const QUICK = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"];
+// Keep only the requested compact shortcuts; users can search for any other market below.
+const QUICK = ["SOL", "BTC", "ETH", "XRP", "BNB"];
 const DEFAULT_WATCHLIST = QUICK.map(base => `${base}USDT`);
+const PREVIOUS_EXPANDED_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"].map(base => `${base}USDT`);
+const PREVIOUS_COMPACT_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"].map(base => `${base}USDT`);
 const WATCHLIST_KEY = "ai-trader-watchlist";
 let localWatchlist = loadLocalWatchlist();
+if (!localWatchlist.includes(selected)) {
+  selected = localWatchlist[0] || "";
+  localStorage.setItem("selected_symbol", selected);
+}
 let publicWatchlistPrices = {};
 let publicWatchlistFetchedAt = 0;
 
 function loadLocalWatchlist() {
   try {
     const saved = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "null");
-    return Array.isArray(saved) ? [...new Set(saved.filter(s => /^[A-Z0-9]{5,20}$/.test(s)))].slice(0, 50) : DEFAULT_WATCHLIST;
+    if (!Array.isArray(saved)) return DEFAULT_WATCHLIST;
+    const cleaned = [...new Set(saved.filter(s => /^[A-Z0-9]{5,20}$/.test(s)))];
+    // Shrink old auto-filled lists while retaining symbols visitors searched for themselves.
+    const hadOldDefault = [PREVIOUS_EXPANDED_DEFAULT, PREVIOUS_COMPACT_DEFAULT]
+      .some(oldList => oldList.every(s => cleaned.includes(s)));
+    if (hadOldDefault) {
+      const customMarkets = cleaned.filter(s => !PREVIOUS_EXPANDED_DEFAULT.includes(s));
+      return [...DEFAULT_WATCHLIST, ...customMarkets].slice(0, 50);
+    }
+    return cleaned.slice(0, 50);
   } catch {
     return DEFAULT_WATCHLIST;
   }
@@ -245,7 +261,18 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
     if (act === "remove-watch") {
       localWatchlist = localWatchlist.filter(symbol => symbol !== sym);
       saveLocalWatchlist();
+      if (selected === sym) {
+        selected = localWatchlist[0] || "";
+        localStorage.setItem("selected_symbol", selected);
+      }
       await refreshPublicWatchlist(true);
+      if (selected) await refreshForecast();
+      else {
+        $("#sel-symbol").textContent = "—";
+        $("#sel-price").textContent = "—";
+        setChartMessage("Add a coin to load its live market chart.");
+      }
+      toast(`${sym} removed from watchlist`);
     } else if (act === "save") {
       const fields = {};
       card.querySelectorAll("input[data-f]").forEach(i => fields[i.dataset.f] = parseFloat(i.value));
@@ -279,7 +306,7 @@ async function addCoin(sym) {
     $("#new-symbol").value = "";
     await refreshCoins();
   } catch (e) {
-    if (e.message.startsWith("HTTP 404")) {
+    if (/HTTP (?:404|405)\b/.test(e.message)) {
       if (!localWatchlist.includes(symbol)) {
         const check = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${encodeURIComponent(symbol)}`);
         if (!check.ok) { toast(`${symbol} is not an available Binance USDT market`, true); return; }
