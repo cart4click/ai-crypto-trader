@@ -169,6 +169,11 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 
 /* chart */
 .chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.market-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+.market-select { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 5px 8px; }
+.market-indicators { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+.market-indicator { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; font-size: 11px; color: var(--muted); }
+.market-indicator b { color: var(--text); }
 .chart-wrap { position: relative; }
 .chart-message { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; color: var(--muted); text-align: center; pointer-events: none; }
 .chart-message[hidden] { display: none; }
