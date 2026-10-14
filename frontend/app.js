@@ -608,9 +608,107 @@ function setChartMessage(message) {
 }
 
 /* --------------------------------------------------------------------- news */
-async function refreshNews() {
+const PUBLIC_NEWS_FEEDS = [
+  ["CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"],
+  ["The Block", "https://www.theblock.co/rss.xml"],
+  ["Decrypt", "https://decrypt.co/feed"],
+  ["Cointelegraph", "https://cointelegraph.com/rss"],
+];
+let publicNewsCache = null;
+let publicNewsFetchedAt = 0;
+
+function cleanNewsText(value) {
+  return new DOMParser().parseFromString(String(value || ""), "text/html")
+    .body.textContent.replace(/\s+/g, " ").trim();
+}
+
+function newsAge(value) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  const hours = Math.max(0, (Date.now() - date.getTime()) / 3600000);
+  return hours < 1 ? "just now" : hours < 24 ? `${Math.floor(hours)}h ago` : `${Math.floor(hours / 24)}d ago`;
+}
+
+function safeNewsUrl(value) {
   try {
-    const d = await api("/api/news");
+    const url = new URL(value);
+    const trustedHosts = ["coindesk.com", "theblock.co", "decrypt.co", "cointelegraph.com"];
+    return url.protocol === "https:" && trustedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))
+      ? url.href : "";
+  } catch { return ""; }
+}
+
+function newsCoins(item) {
+  const text = `${item.title || ""} ${item.summary || ""}`;
+  const coins = [];
+  if (/bitcoin|\bbtc\b/i.test(text)) coins.push("BTCUSDT");
+  if (/ethereum|\beth\b|\bether\b/i.test(text)) coins.push("ETHUSDT");
+  if (/solana|\bsol\b/i.test(text)) coins.push("SOLUSDT");
+  return coins;
+}
+
+function headlineTone(items) {
+  const text = items.map(item => `${item.title} ${item.summary || ""}`).join(" ").toLowerCase();
+  const up = (text.match(/\b(rally|surge|surges|rise|rises|gain|gains|inflow|inflows|approval|approved|adoption|rebound|bullish)\b/g) || []).length;
+  const down = (text.match(/\b(fall|falls|drop|drops|lower|plunge|plunges|crash|sell-off|outflow|outflows|liquidation|bearish|hot inflation)\b/g) || []).length;
+  const score = Math.max(-1, Math.min(1, (up - down) / Math.max(3, up + down + 1)));
+  return { score, label: score > 0.12 ? "Bullish" : score < -0.12 ? "Bearish" : "Neutral" };
+}
+
+async function fetchPublicNews(force = false) {
+  if (!force && publicNewsCache && Date.now() - publicNewsFetchedAt < 10 * 60 * 1000) return publicNewsCache;
+  const results = await Promise.allSettled(PUBLIC_NEWS_FEEDS.map(async ([source, feedUrl]) => {
+    const endpoint = new URL("https://api.rss2json.com/v1/api.json");
+    endpoint.searchParams.set("rss_url", feedUrl);
+    const response = await fetch(endpoint, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${source}: HTTP ${response.status}`);
+    const feed = await response.json();
+    if (feed.status !== "ok") throw new Error(`${source}: ${feed.message || "feed unavailable"}`);
+    return (feed.items || []).map(item => ({
+      title: cleanNewsText(item.title),
+      summary: cleanNewsText(item.description || item.content).slice(0, 700),
+      url: item.link,
+      source,
+      published: item.pubDate,
+    }));
+  }));
+  const items = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  if (!items.length) throw new Error("Crypto news feeds are temporarily unavailable.");
+  const seen = new Set();
+  const recent = items.filter(item => {
+    const key = item.url || item.title;
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    const timestamp = Date.parse(item.published);
+    return !Number.isFinite(timestamp) || Date.now() - timestamp < 72 * 3600000;
+  }).map(item => ({
+    ...item,
+    coins: newsCoins(item),
+    age: newsAge(item.published),
+  })).sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
+  const market = headlineTone(recent);
+  publicNewsCache = { market, items: recent, fear_greed: null, ai: null, source: "publisher RSS" };
+  publicNewsFetchedAt = Date.now();
+  return publicNewsCache;
+}
+
+async function refreshNews(force = false) {
+  let d;
+  try {
+    d = await api("/api/news?symbols=BTCUSDT,SOLUSDT,ETHUSDT");
+  } catch (e) {
+    console.warn("app news API unavailable; using publisher RSS feeds:", e.message);
+    try {
+      d = await fetchPublicNews(force);
+    } catch (feedError) {
+      console.warn("publisher news feeds:", feedError.message);
+      $("#asset-news").innerHTML = `<div class="muted small">${esc(feedError.message)} <a href="https://www.coindesk.com/" target="_blank" rel="noopener">Open CoinDesk</a></div>`;
+      $("#news-list").innerHTML = '<div class="muted small">News is temporarily unavailable.</div>';
+      return;
+    }
+  }
+
+  try {
     const fg = d.fear_greed;
     $("#fear-greed").textContent = fg ? `Fear & Greed index: ${fg.value} (${fg.classification})` : "";
     const score = d.market?.score ?? 0;
@@ -661,19 +759,33 @@ async function refreshNews() {
       </div>
       <div class="sentiment-bar"><div class="sentiment-marker" style="left:${posPct}%"></div></div>
       <div class="sentiment-line muted"><span>Bearish</span><span>Bullish</span></div>
+      ${d.source === "publisher RSS" ? '<div class="muted small">Estimated tone from recent publisher headlines</div>' : ""}
       ${d.ai?.summary ? `<div class="ai-summary">🤖 <b>AI:</b> ${esc(d.ai.summary)}${d.ai.key_events?.length ? "<br><span class='muted'>Key: " + d.ai.key_events.map(esc).join(" · ") + "</span>" : ""}</div>` : ""}`
       + marketWhaleInfo + whaleInfo;
+    const focus = [["BTCUSDT", "BTC"], ["SOLUSDT", "SOL"], ["ETHUSDT", "ETH"]];
+    $("#asset-news").innerHTML = focus.map(([symbol, coin]) => {
+      const item = (d.items || []).find(article => article.coins?.some(value => value === symbol || value === coin));
+      if (!item) return `<div class="asset-news-card"><div class="asset-news-head"><span class="asset-news-coin">${coin}</span><span class="asset-news-source">No recent source headline specifically names ${coin}</span></div></div>`;
+      const summary = item.summary || item.description || "The publisher has not included a summary in its feed. Open the report for the full explanation.";
+      const url = safeNewsUrl(item.url);
+      return `<article class="asset-news-card">
+        <div class="asset-news-head"><span class="asset-news-coin">${coin}</span><span class="asset-news-source">${esc(item.source || "News source")}${item.age ? ` · ${esc(item.age)}` : ""}</span></div>
+        <div class="asset-news-title">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener">${esc(item.title)}</a>` : esc(item.title)}</div>
+        <p class="asset-news-summary"><b>Reported context:</b> ${esc(summary)}</p>
+      </article>`;
+    }).join("");
     $("#news-list").innerHTML = (d.items || []).slice(0, 14).map(it => `
       <div class="news-item">
-        <div class="news-title"><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.title)}</a></div>
+        <div class="news-title">${safeNewsUrl(it.url) ? `<a href="${esc(safeNewsUrl(it.url))}" target="_blank" rel="noopener">${esc(it.title)}</a>` : esc(it.title)}</div>
+        ${it.summary || it.description ? `<p class="asset-news-summary">${esc(it.summary || it.description)}</p>` : ""}
         <div class="news-meta">
           ${sentTag(it.score)}<span>${esc(it.source)}</span>${it.age ? `<span>${esc(it.age)}</span>` : ""}
           ${it.coins?.length ? `<span>${it.coins.map(c => c.replace("USDT", "")).join(", ")}</span>` : ""}
         </div>
       </div>`).join("") || '<div class="muted small">No news loaded.</div>';
-  } catch (e) { console.warn("news:", e.message); }
+  } catch (e) { console.warn("news render:", e.message); }
 }
-$("#btn-news-refresh").addEventListener("click", refreshNews);
+$("#btn-news-refresh").addEventListener("click", () => refreshNews(true));
 
 /* ------------------------------------------------------- pending & trades */
 async function refreshPending() {
@@ -823,7 +935,7 @@ refreshStatus(); refreshCoins(); refreshForecast(); refreshNews(); refreshPendin
 setInterval(refreshStatus, 10000);
 setInterval(refreshCoins, 10000);
 setInterval(refreshForecast, 90000);
-setInterval(refreshNews, 120000);
+setInterval(refreshNews, 10 * 60 * 1000);
 setInterval(refreshPending, 8000);
 setInterval(refreshTrades, 10000);
 setInterval(refreshWallet, 10000);

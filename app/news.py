@@ -130,9 +130,11 @@ def parse_feed(xml_text: str) -> list[dict]:
         if not title or title.lower() in seen_titles:
             continue
         seen_titles.add(title.lower())
+        summary = _clean(_find_text(entry, {"description", "summary", "encoded"}))
         items.append({
             "title": title[:300],
             "url": _find_link(entry),
+            "summary": summary[:1200],
             "published": _find_ts_or_none(entry),
         })
         if len(items) >= 30:
