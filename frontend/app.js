@@ -7,6 +7,19 @@ let chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "can
 const CHART_INTERVALS = ["15m", "30m", "1h", "4h", "1d"];
 let chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval"))
   ? localStorage.getItem("market-chart-interval") : "1h";
+const INDICATOR_OPTIONS = {
+  supertrend: "Multi-timeframe Supertrend",
+  rsi: "Relative Strength Index (RSI)",
+  macd: "MACD",
+};
+const INDICATORS_KEY = "market-indicators";
+let activeIndicators = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(INDICATORS_KEY) || "[\"supertrend\"]");
+    const valid = Array.isArray(saved) ? saved.filter((name, index) => INDICATOR_OPTIONS[name] && saved.indexOf(name) === index) : [];
+    return valid.slice(0, 3);
+  } catch { return ["supertrend"]; }
+})();
 let marketRefreshInFlight = false;
 let forecastApiUnavailable = false;
 
@@ -518,6 +531,60 @@ function renderForecast(f) {
     <div class="fcell"><div class="k">Now</div><div class="v">${fmtUSD(f.last_close)}</div><div class="s">EMA20 ${fmtUSD(ind.ema20)} · EMA50 ${fmtUSD(ind.ema50)}</div></div>`;
 }
 
+function renderIndicatorControls() {
+  const select = $("#indicator-select");
+  const addButton = $("#btn-add-indicator");
+  select.querySelectorAll("option").forEach(option => {
+    option.disabled = activeIndicators.includes(option.value);
+  });
+  $("#indicator-count").textContent = `(${activeIndicators.length}/3 selected)`;
+  addButton.disabled = activeIndicators.length >= 3 || activeIndicators.includes(select.value);
+  $("#active-indicators").innerHTML = activeIndicators.length
+    ? activeIndicators.map(name => `<span class="indicator-pill">${esc(INDICATOR_OPTIONS[name])}<button type="button" data-remove-indicator="${name}" aria-label="Remove ${esc(INDICATOR_OPTIONS[name])}" title="Remove indicator">×</button></span>`).join("")
+    : '<span class="muted small">No indicators selected.</span>';
+  $("#supertrend-dashboard").hidden = !activeIndicators.includes("supertrend");
+}
+
+function ema(values, period) {
+  if (!values.length) return [];
+  const multiplier = 2 / (period + 1);
+  return values.reduce((result, value, index) => {
+    result.push(index ? value * multiplier + result[index - 1] * (1 - multiplier) : value);
+    return result;
+  }, []);
+}
+
+function renderIndicatorReadouts(candles) {
+  const selectedReadouts = activeIndicators.filter(name => name !== "supertrend");
+  if (!selectedReadouts.length) {
+    $("#indicator-readouts").innerHTML = "";
+    return;
+  }
+  if (!candles?.length) {
+    $("#indicator-readouts").innerHTML = '<span class="muted small">Select a market to load indicator values.</span>';
+    return;
+  }
+  const closes = candles.map(candle => candle.close);
+  const readouts = selectedReadouts.map(name => {
+    if (name === "rsi") {
+      if (closes.length < 15) return `<div class="indicator-readout"><b>RSI (14)</b><span>Waiting for more candles</span></div>`;
+      const changes = closes.slice(-15).slice(1).map((close, i) => close - closes.slice(-15)[i]);
+      const gains = changes.reduce((sum, change) => sum + Math.max(change, 0), 0) / 14;
+      const losses = changes.reduce((sum, change) => sum + Math.max(-change, 0), 0) / 14;
+      const rsi = losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
+      const signal = rsi >= 70 ? "Overbought" : rsi <= 30 ? "Oversold" : "Neutral";
+      return `<div class="indicator-readout"><b>Relative Strength Index (RSI 14)</b><span>${rsi.toFixed(1)} · ${signal}</span></div>`;
+    }
+    const fast = ema(closes, 12), slow = ema(closes, 26);
+    const macdLine = fast.map((value, i) => value - slow[i]);
+    const signalLine = ema(macdLine, 9);
+    const current = macdLine.at(-1), signal = signalLine.at(-1);
+    const trend = current >= signal ? "Bullish" : "Bearish";
+    return `<div class="indicator-readout"><b>MACD (12, 26, 9)</b><span>${trend} · ${fmtMarketPrice(current - signal)}</span></div>`;
+  });
+  $("#indicator-readouts").innerHTML = readouts.join("");
+}
+
 function calculateSupertrend(candles, period = 10, multiplier = 3) {
   if (candles.length < period + 1) return null;
   const trueRanges = candles.map((candle, i) => {
@@ -558,7 +625,7 @@ function renderSupertrendDashboard(results) {
     return `<td><span class="supertrend-state ${css}">${label}</span></td>`;
   }).join("");
   $("#supertrend-dashboard").innerHTML = `<table aria-label="Multi-timeframe Supertrend dashboard">
-    <caption>Supertrend · ATR 10 / factor 3</caption>
+    <caption>Multi-timeframe Supertrend · ATR 10 / factor 3</caption>
     <thead><tr>${headings}</tr></thead><tbody><tr>${states}</tr></tbody></table>`;
 }
 
@@ -575,6 +642,10 @@ async function fetchBinanceCandles(symbol, interval, limit = 168) {
 }
 
 async function refreshSupertrendDashboard(symbol, existing = {}) {
+  if (!activeIndicators.includes("supertrend")) {
+    $("#supertrend-dashboard").innerHTML = "";
+    return;
+  }
   const intervals = ["15m", "30m", "1h", "4h"];
   const settled = await Promise.allSettled(intervals.map(async interval => {
     const candles = existing[interval] || await fetchBinanceCandles(symbol, interval, 120);
@@ -684,6 +755,7 @@ async function renderPublicMarketChart(symbol) {
   if (symbol !== selected) return;
 
   await refreshSupertrendDashboard(symbol, candleData);
+  renderIndicatorReadouts(candles);
   const labels = candles.map(candle => new Date(candle.time).toLocaleString("en-US", {
     month: "short", day: "numeric", hour: "2-digit", minute: chartInterval.endsWith("m") ? "2-digit" : undefined,
   }));
@@ -718,6 +790,7 @@ async function renderPublicMarketChart(symbol) {
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = chartStyle === "candles" ? candles : null;
+  chart.$indicatorCandles = candles;
   chart.update();
   $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
   setChartMessage("");
@@ -1076,6 +1149,26 @@ async function refreshMarket(force = false) {
 
 $("#chart-style").value = chartStyle;
 $("#chart-interval").value = chartInterval;
+renderIndicatorControls();
+$("#indicator-select").addEventListener("change", renderIndicatorControls);
+$("#btn-add-indicator").addEventListener("click", () => {
+  const name = $("#indicator-select").value;
+  if (!INDICATOR_OPTIONS[name] || activeIndicators.includes(name) || activeIndicators.length >= 3) return;
+  activeIndicators.push(name);
+  localStorage.setItem(INDICATORS_KEY, JSON.stringify(activeIndicators));
+  renderIndicatorControls();
+  renderIndicatorReadouts(chart?.$indicatorCandles || []);
+  refreshMarket(true);
+});
+$("#active-indicators").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-indicator]");
+  if (!button) return;
+  activeIndicators = activeIndicators.filter(name => name !== button.dataset.removeIndicator);
+  localStorage.setItem(INDICATORS_KEY, JSON.stringify(activeIndicators));
+  renderIndicatorControls();
+  renderIndicatorReadouts(chart?.$indicatorCandles || []);
+  refreshMarket(true);
+});
 $("#chart-style").addEventListener("change", (event) => {
   chartStyle = event.target.value === "candles" ? "candles" : "line";
   localStorage.setItem("market-chart-style", chartStyle);

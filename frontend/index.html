@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=supertrend-chart-clearance" />
+  <link rel="stylesheet" href="/style.css?v=indicator-manager-layout" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js"></script>
 </head>
@@ -36,15 +36,6 @@
       </div>
       
       <div class="card">
-        <h3>Market sentiment</h3>
-        <div id="sentiment-box" class="sentiment"><span class="muted">loading…</span></div>
-        <div id="fear-greed" class="muted small"></div>
-        <div id="asset-news" class="asset-news"><span class="muted small">Loading BTC, SOL and ETH headlines…</span></div>
-        <div class="news-source-note muted small">Headlines from CoinDesk, The Block, Decrypt, Cointelegraph and the Solana Foundation.</div>
-        <button id="btn-news-refresh" class="btn tiny">↻ Refresh news</button>
-      </div>
-
-      <div class="card">
         <h3>Watchlist</h3>
         <div class="add-coin">
           <input id="new-symbol" placeholder="e.g. SOL, SOL/USDT or SOLUSDT" />
@@ -52,6 +43,15 @@
         </div>
         <div class="quick-add" id="quick-add"></div>
         <div id="coins-list" class="coins-list"><div class="muted small">No coins yet — add one above.</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Market sentiment</h3>
+        <div id="sentiment-box" class="sentiment"><span class="muted">loading…</span></div>
+        <div id="fear-greed" class="muted small"></div>
+        <div id="asset-news" class="asset-news"><span class="muted small">Loading BTC, SOL and ETH headlines…</span></div>
+        <div class="news-source-note muted small">Headlines from CoinDesk, The Block, Decrypt, Cointelegraph and the Solana Foundation.</div>
+        <button id="btn-news-refresh" class="btn tiny">↻ Refresh news</button>
       </div>
     </section>
 
@@ -81,6 +81,19 @@
           </select>
           <button id="btn-market-refresh" class="btn tiny">↻ Refresh market</button>
           <span id="market-updated" class="muted small">Auto refresh: 10 seconds</span>
+        </div>
+        <div class="indicator-controls">
+          <div class="indicator-add-row">
+            <label class="muted small" for="indicator-select">Indicators <span id="indicator-count"></span></label>
+            <select id="indicator-select" class="market-select" aria-label="Choose an indicator to add">
+              <option value="supertrend">Multi-timeframe Supertrend</option>
+              <option value="rsi">Relative Strength Index (RSI)</option>
+              <option value="macd">MACD</option>
+            </select>
+            <button id="btn-add-indicator" class="btn tiny">Add indicator</button>
+          </div>
+          <div id="active-indicators" class="active-indicators" aria-live="polite"></div>
+          <div id="indicator-readouts" class="indicator-readouts" aria-live="polite"></div>
         </div>
         <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
         <div class="chart-wrap">
@@ -152,6 +165,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=multitimeframe-supertrend"></script>
+  <script src="/app.js?v=indicator-manager-layout"></script>
 </body>
 </html>
