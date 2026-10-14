@@ -1,6 +1,7 @@
 (() => {
   const $ = selector => document.querySelector(selector);
   const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
+  const GOOGLE_CLIENT_ID = window.GOOGLE_CLIENT_ID || "";
   const nameForm = $("#name-form");
   const emailForm = $("#email-form");
   const codeForm = $("#code-form");
@@ -25,6 +26,7 @@
     document.querySelector(".login-progress").hidden = step === "signed-in";
     $("#signed-in-panel").hidden = step !== "signed-in";
     $("#signup-prompt").hidden = step === "signed-in" || step === "code";
+    $("#google-options").hidden = step !== "email" || signupMode;
     $("#name-summary-wrap").hidden = !signupMode || step !== "email";
     $("#cancel-signup").hidden = !signupMode || step !== "email";
     $("#login-title").textContent = step === "name" ? "Create your account" : step === "signed-in" ? "You’re already signed in" : step === "code" ? "Check your email" : signupMode ? "Create your account" : "Already have an account? Log in";
@@ -73,6 +75,49 @@
     showMessage("Check your inbox for a six-digit code to continue.");
     startResendTimer();
     $("#email-code").focus();
+  }
+
+  async function finishGoogleSignIn(credential) {
+    if (!API_BASE_URL) {
+      showMessage("Google sign-in is not connected yet. The secure API must be configured.", true);
+      return;
+    }
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/auth/google`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.detail || `Google sign-in failed (HTTP ${response.status}).`);
+      localStorage.setItem("c4c-auth-session", data.session_token);
+      localStorage.setItem("c4c-auth-user", JSON.stringify(data.user));
+      location.href = "/";
+    } catch (error) {
+      showMessage(error.message || "Google sign-in failed. Please try again.", true);
+    }
+  }
+
+  function configureGoogleSignIn() {
+    if (!GOOGLE_CLIENT_ID) return;
+    if (!window.google?.accounts?.id) {
+      $("#google-setup-note").textContent = "Google sign-in could not load. Check your connection and reload.";
+      return;
+    }
+    try {
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: response => finishGoogleSignIn(response.credential),
+        auto_select: false,
+      });
+      window.google.accounts.id.renderButton($("#google-signin-button"), {
+        type: "standard", theme: "outline", size: "large", text: "continue_with", shape: "rectangular", width: 300,
+      });
+      $("#google-signin-button").hidden = false;
+      $("#google-signin-unconfigured").hidden = true;
+      $("#google-setup-note").hidden = true;
+    } catch (error) {
+      $("#google-setup-note").textContent = "Google sign-in setup is incomplete. Please use email login for now.";
+    }
   }
 
   nameForm.addEventListener("submit", event => {
@@ -160,6 +205,8 @@
   $("#email-code").addEventListener("input", event => {
     event.target.value = event.target.value.replace(/\D/g, "").slice(0, 6);
   });
+
+  configureGoogleSignIn();
 
   try {
     const storedUser = JSON.parse(localStorage.getItem("c4c-auth-user") || "null");

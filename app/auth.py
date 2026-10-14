@@ -11,6 +11,8 @@ import time
 from email.message import EmailMessage
 
 from fastapi import APIRouter, HTTPException, Request
+from google.auth.transport.requests import Request as GoogleRequest
+from google.oauth2 import id_token
 from pydantic import BaseModel
 
 from .config import settings
@@ -35,6 +37,10 @@ class CodeRequest(BaseModel):
 class CodeVerify(BaseModel):
     challenge_id: str
     code: str
+
+
+class GoogleSignIn(BaseModel):
+    credential: str
 
 
 def _send_code_email(recipient: str, first_name: str, code: str) -> None:
@@ -126,6 +132,39 @@ async def verify_code(body: CodeVerify):
         _challenges.pop(body.challenge_id, None)
         session_id = secrets.token_urlsafe(32)
         user = {key: challenge[key] for key in ("first_name", "last_name", "email")}
+        _sessions[session_id] = {**user, "expires": time.time() + 30 * 24 * 60 * 60}
+    return {"ok": True, "session_token": session_id, "user": user}
+
+
+@router.post("/google")
+async def google_sign_in(body: GoogleSignIn):
+    if not settings.google_client_id:
+        raise HTTPException(503, "Google sign-in is not configured on the server yet.")
+    if not body.credential or len(body.credential) > 10000:
+        raise HTTPException(400, "Google did not return a valid sign-in credential.")
+    try:
+        identity = await asyncio.to_thread(
+            id_token.verify_oauth2_token,
+            body.credential,
+            GoogleRequest(),
+            settings.google_client_id,
+        )
+    except Exception as exc:
+        log.info("Rejected Google sign-in credential (%s)", type(exc).__name__)
+        raise HTTPException(401, "Google sign-in could not verify your account. Please try again.") from exc
+    if not identity.get("email_verified") or not identity.get("sub"):
+        raise HTTPException(401, "Google did not verify this email address.")
+
+    email = str(identity.get("email", "")).strip().lower()
+    if not _EMAIL_RE.fullmatch(email):
+        raise HTTPException(401, "Google did not return a valid email address.")
+    user = {
+        "first_name": str(identity.get("given_name") or "there")[:60],
+        "last_name": str(identity.get("family_name") or "")[:60],
+        "email": email,
+    }
+    session_id = secrets.token_urlsafe(32)
+    async with _lock:
         _sessions[session_id] = {**user, "expires": time.time() + 30 * 24 * 60 * 60}
     return {"ok": True, "session_token": session_id, "user": user}
 

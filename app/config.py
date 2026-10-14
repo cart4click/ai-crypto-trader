@@ -43,6 +43,7 @@ class Settings:
     smtp_username: str = os.getenv("SMTP_USERNAME", "")
     smtp_password: str = os.getenv("SMTP_PASSWORD", "")
     smtp_from_email: str = os.getenv("SMTP_FROM_EMAIL", "")
+    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
 
     dry_run: bool = _bool(os.getenv("DRY_RUN"), True)
     max_order_usdt: float = float(os.getenv("MAX_ORDER_USDT", "100"))

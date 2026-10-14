@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Sign in · AI Crypto Trader C4C</title>
-  <link rel="stylesheet" href="/style.css?v=email-only-login" />
-  <script src="/config.js"></script>
-  <script src="/login.js?v=email-only-login" defer></script>
+  <link rel="stylesheet" href="/style.css?v=google-sign-in" />
+  <script src="/config.js?v=google-sign-in"></script>
+  <script src="https://accounts.google.com/gsi/client" defer></script>
+  <script src="/login.js?v=google-sign-in" defer></script>
 </head>
 <body class="login-page">
   <header class="login-header">
@@ -24,6 +25,12 @@
       <p class="muted login-intro">Enter your email and we’ll send you a one-time code to log in.</p>
       <div class="login-progress" aria-label="Sign-in progress">
         <span class="current" data-progress="1">1</span><i></i><span data-progress="2">2</span>
+      </div>
+      <div id="google-options" class="google-options">
+        <div id="google-signin-button" class="google-signin-button" hidden></div>
+        <button id="google-signin-unconfigured" class="btn google-placeholder" type="button" disabled>Continue with Google</button>
+        <p id="google-setup-note" class="muted small">Google sign-in needs setup before it can be used.</p>
+        <div class="login-divider"><span>or use email</span></div>
       </div>
       <form id="name-form" class="login-step" hidden>
         <label for="first-name">First name</label>

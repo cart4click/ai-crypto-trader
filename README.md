@@ -153,6 +153,19 @@ after 10 minutes, allow five verification attempts, and are rate limited.
 The current lightweight sign-in sessions and rate limits are held in backend
 memory, so a backend restart clears existing sign-ins.
 
+### Google sign-in setup
+
+Google sign-in uses Google's Identity Services button and verifies its ID token
+on the FastAPI backend. Create a **Web application** OAuth client in Google
+Cloud, add `https://www.cart4click.com` and `https://cart4click.com` as
+authorized JavaScript origins, then set the same client ID in
+`frontend/config.js` (`window.GOOGLE_CLIENT_ID`) and the backend environment
+(`GOOGLE_CLIENT_ID`). The ID is public; never put a client secret in the
+frontend. Deploy the updated backend and frontend over HTTPS with the CORS
+origins above. Until both IDs and the HTTPS API are configured, the page shows
+Google sign-in as unavailable and email login remains available when SMTP is
+configured.
+
 Do not put Binance, Telegram, or AI provider credentials in `frontend/` or
 `config.js`; those belong only in the backend's environment. The chart displays
 an API error directly when the backend is missing or unreachable.
