@@ -134,6 +134,7 @@
     if (localStorage.getItem("c4c-auth-session") && storedUser?.first_name) {
       nameForm.hidden = emailForm.hidden = codeForm.hidden = true;
       document.querySelector(".login-progress").hidden = true;
+      $(".login-intro").hidden = true;
       $("#signed-in-panel").hidden = false;
       $("#signed-in-name").textContent = `${storedUser.first_name} ${storedUser.last_name}`;
       $("#login-title").textContent = "You’re already signed in";

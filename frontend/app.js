@@ -2,6 +2,9 @@
 const $ = (s) => document.querySelector(s);
 let TOKEN = localStorage.getItem("app_token") || "";
 let chart = null;
+let drawingTool = null;
+let chartDrawings = [];
+let chartDrawingKey = "";
 let selected = localStorage.getItem("selected_symbol") || "BTCUSDT";
 let chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "candles" : "line";
 const CHART_INTERVALS = ["15m", "30m", "1h", "4h", "1d"];
@@ -11,6 +14,9 @@ const INDICATOR_OPTIONS = {
   supertrend: "Multi-timeframe Supertrend",
   rsi: "Relative Strength Index (RSI)",
   macd: "MACD",
+  ema: "EMA 20 / 50 crossover",
+  bollinger: "Bollinger Bands (20, 2)",
+  atr: "Average True Range (ATR 14)",
 };
 const INDICATORS_KEY = "market-indicators";
 let activeIndicators = (() => {
@@ -46,21 +52,25 @@ function renderAccountLink() {
     accountLink.onclick = null;
     return;
   }
-  accountLink.textContent = `Sign out · ${user.first_name}`;
-  accountLink.href = "#sign-out";
-  accountLink.onclick = async event => {
-    event.preventDefault();
-    try {
-      if (API_BASE_URL) await fetch(`${API_BASE_URL}/api/auth/logout`, {
-        method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem(ACCOUNT_SESSION_KEY)}` },
-      });
-    } catch { /* Local sign-out still clears this browser session. */ }
-    localStorage.removeItem(ACCOUNT_SESSION_KEY);
-    localStorage.removeItem(ACCOUNT_USER_KEY);
-    renderAccountLink();
-  };
+  accountLink.textContent = "Account";
+  accountLink.href = "/login.html";
+  accountLink.onclick = null;
 }
 renderAccountLink();
+
+function loadChartDrawings(symbol) {
+  chartDrawingKey = `chart-drawings:${symbol}:${chartInterval}`;
+  try {
+    const saved = JSON.parse(localStorage.getItem(chartDrawingKey) || "[]");
+    return Array.isArray(saved) ? saved.filter(line =>
+      (line.type === "horizontal" && Number.isFinite(line.price)) ||
+      (line.type === "vertical" && Number.isFinite(line.index))) : [];
+  } catch { return []; }
+}
+
+function saveChartDrawings() {
+  if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+}
 
 // Keep only the requested compact shortcuts; users can search for any other market below.
 const QUICK = ["SOL", "BTC", "ETH", "XRP", "BNB"];
@@ -600,16 +610,38 @@ function renderIndicatorReadouts(candles) {
       const changes = closes.slice(-15).slice(1).map((close, i) => close - closes.slice(-15)[i]);
       const gains = changes.reduce((sum, change) => sum + Math.max(change, 0), 0) / 14;
       const losses = changes.reduce((sum, change) => sum + Math.max(-change, 0), 0) / 14;
-      const rsi = losses === 0 ? 100 : 100 - 100 / (1 + gains / losses);
+      const rsi = losses === 0 ? (gains === 0 ? 50 : 100) : 100 - 100 / (1 + gains / losses);
       const signal = rsi >= 70 ? "Overbought" : rsi <= 30 ? "Oversold" : "Neutral";
       return `<div class="indicator-readout"><b>Relative Strength Index (RSI 14)</b><span>${rsi.toFixed(1)} · ${signal}</span></div>`;
     }
-    const fast = ema(closes, 12), slow = ema(closes, 26);
-    const macdLine = fast.map((value, i) => value - slow[i]);
-    const signalLine = ema(macdLine, 9);
-    const current = macdLine.at(-1), signal = signalLine.at(-1);
-    const trend = current >= signal ? "Bullish" : "Bearish";
-    return `<div class="indicator-readout"><b>MACD (12, 26, 9)</b><span>${trend} · ${fmtMarketPrice(current - signal)}</span></div>`;
+    if (name === "macd") {
+      const fast = ema(closes, 12), slow = ema(closes, 26);
+      const macdLine = fast.map((value, i) => value - slow[i]);
+      const signalLine = ema(macdLine, 9);
+      const current = macdLine.at(-1), signal = signalLine.at(-1);
+      const trend = current >= signal ? "Bullish" : "Bearish";
+      return `<div class="indicator-readout"><b>MACD (12, 26, 9)</b><span>${trend} · ${fmtMarketPrice(current - signal)}</span></div>`;
+    }
+    if (name === "ema") {
+      const fast = ema(closes, 20).at(-1), slow = ema(closes, 50).at(-1);
+      const trend = fast >= slow ? "Bullish crossover" : "Bearish crossover";
+      return `<div class="indicator-readout"><b>EMA (20 / 50)</b><span>${trend} · ${fmtMarketPrice(fast)} / ${fmtMarketPrice(slow)}</span></div>`;
+    }
+    if (name === "bollinger") {
+      const window = closes.slice(-20);
+      const middle = window.reduce((sum, value) => sum + value, 0) / window.length;
+      const deviation = Math.sqrt(window.reduce((sum, value) => sum + (value - middle) ** 2, 0) / window.length);
+      const upper = middle + 2 * deviation, lower = middle - 2 * deviation;
+      const position = closes.at(-1) > upper ? "Above upper band" : closes.at(-1) < lower ? "Below lower band" : "Within bands";
+      return `<div class="indicator-readout"><b>Bollinger Bands (20, 2)</b><span>${position} · ${fmtMarketPrice(lower)}–${fmtMarketPrice(upper)}</span></div>`;
+    }
+    if (candles.length < 15) return `<div class="indicator-readout"><b>ATR (14)</b><span>Waiting for more candles</span></div>`;
+    const ranges = candles.slice(-14).map((candle, index, sample) => {
+      const previous = index ? sample[index - 1].close : candles.at(-15).close;
+      return Math.max(candle.high - candle.low, Math.abs(candle.high - previous), Math.abs(candle.low - previous));
+    });
+    const atr = ranges.reduce((sum, value) => sum + value, 0) / ranges.length;
+    return `<div class="indicator-readout"><b>Average True Range (ATR 14)</b><span>${fmtMarketPrice(atr)} · ${((atr / closes.at(-1)) * 100).toFixed(2)}% volatility</span></div>`;
   });
   $("#indicator-readouts").innerHTML = readouts.join("");
 }
@@ -732,6 +764,7 @@ function renderChart(f) {
       },
     },
   };
+  chartDrawings = loadChartDrawings(selected);
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = null;
@@ -767,7 +800,80 @@ const candlestickOverlay = {
     ctx.restore();
   },
 };
-if (window.Chart) Chart.register(candlestickOverlay);
+const chartDrawingOverlay = {
+  id: "userMarketDrawings",
+  afterDatasetsDraw(chartInstance) {
+    if (!chartDrawings.length) return;
+    const { ctx, chartArea, scales: { x, y } } = chartInstance;
+    if (!chartArea || !x || !y) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(chartArea.left, chartArea.top, chartArea.right - chartArea.left, chartArea.bottom - chartArea.top);
+    ctx.clip();
+    ctx.strokeStyle = "#fbbf24";
+    ctx.fillStyle = "#fbbf24";
+    ctx.lineWidth = 1.25;
+    ctx.setLineDash([5, 4]);
+    chartDrawings.forEach(line => {
+      ctx.beginPath();
+      if (line.type === "horizontal") {
+        const pixel = y.getPixelForValue(line.price);
+        ctx.moveTo(chartArea.left, pixel);
+        ctx.lineTo(chartArea.right, pixel);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.font = "10px sans-serif";
+        ctx.textAlign = "right";
+        ctx.fillText(fmtMarketPrice(line.price), chartArea.right - 5, pixel - 4);
+        ctx.setLineDash([5, 4]);
+      } else if (line.type === "vertical") {
+        const pixel = x.getPixelForValue(line.index);
+        ctx.moveTo(pixel, chartArea.top);
+        ctx.lineTo(pixel, chartArea.bottom);
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  },
+};
+if (window.Chart) Chart.register(candlestickOverlay, chartDrawingOverlay);
+
+function setDrawingTool(tool) {
+  drawingTool = drawingTool === tool ? null : tool;
+  document.querySelectorAll("[data-draw-tool]").forEach(button => {
+    const active = button.dataset.drawTool === drawingTool;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+  $("#chart").style.cursor = drawingTool ? "crosshair" : "default";
+  $("#drawing-status").textContent = drawingTool
+    ? `Click the chart to place a ${drawingTool} line.`
+    : "Choose a line, then click the chart.";
+}
+
+document.querySelector(".chart-drawing-tools").addEventListener("click", event => {
+  const button = event.target.closest("[data-draw-tool]");
+  if (button) setDrawingTool(button.dataset.drawTool);
+});
+$("#btn-clear-drawings").addEventListener("click", () => {
+  chartDrawings = [];
+  saveChartDrawings();
+  if (chart) chart.update("none");
+  $("#drawing-status").textContent = "Chart lines cleared.";
+});
+$("#chart").addEventListener("click", event => {
+  if (!drawingTool || !chart) return;
+  const rect = chart.canvas.getBoundingClientRect();
+  const xPixel = (event.clientX - rect.left) * (chart.width / rect.width);
+  const yPixel = (event.clientY - rect.top) * (chart.height / rect.height);
+  const area = chart.chartArea;
+  if (xPixel < area.left || xPixel > area.right || yPixel < area.top || yPixel > area.bottom) return;
+  if (drawingTool === "horizontal") chartDrawings.push({ type: "horizontal", price: chart.scales.y.getValueForPixel(yPixel) });
+  else chartDrawings.push({ type: "vertical", index: chart.scales.x.getValueForPixel(xPixel) });
+  saveChartDrawings();
+  chart.update("none");
+  setDrawingTool(null);
+});
 
 async function renderPublicMarketChart(symbol) {
   if (!window.Chart) throw new Error("Chart library did not load. Reload the page to try again.");
@@ -816,6 +922,7 @@ async function renderPublicMarketChart(symbol) {
       },
     },
   };
+  chartDrawings = loadChartDrawings(symbol);
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = chartStyle === "candles" ? candles : null;

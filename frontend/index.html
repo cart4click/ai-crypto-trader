@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=email-sign-in" />
+  <link rel="stylesheet" href="/style.css?v=chart-drawing-tools" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js"></script>
 </head>
@@ -90,6 +90,9 @@
               <option value="supertrend">Multi-timeframe Supertrend</option>
               <option value="rsi">Relative Strength Index (RSI)</option>
               <option value="macd">MACD</option>
+              <option value="ema">EMA 20 / 50 crossover</option>
+              <option value="bollinger">Bollinger Bands (20, 2)</option>
+              <option value="atr">Average True Range (ATR 14)</option>
             </select>
             <button id="btn-add-indicator" class="btn tiny">Add indicator</button>
           </div>
@@ -97,6 +100,13 @@
           <div id="indicator-readouts" class="indicator-readouts" aria-live="polite"></div>
         </div>
         <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
+        <div class="chart-drawing-tools" role="toolbar" aria-label="Chart drawing tools">
+          <span class="drawing-label">Draw</span>
+          <button class="btn tiny" type="button" data-draw-tool="horizontal" aria-pressed="false">━ Horizontal</button>
+          <button class="btn tiny" type="button" data-draw-tool="vertical" aria-pressed="false">┃ Vertical</button>
+          <button id="btn-clear-drawings" class="btn tiny" type="button">Clear lines</button>
+          <span id="drawing-status" class="muted small">Choose a line, then click the chart.</span>
+        </div>
         <div class="chart-wrap">
           <canvas id="chart" aria-label="Price history and forecast chart"></canvas>
           <div id="chart-message" class="chart-message">Add a coin to load its live market chart.</div>
@@ -166,6 +176,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=email-sign-in"></script>
+  <script src="/app.js?v=chart-drawing-tools"></script>
 </body>
 </html>

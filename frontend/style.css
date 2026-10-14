@@ -76,6 +76,7 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 
 .actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
 .actions button.btn { padding: 5px 9px; font-size: 11px; }
+.actions #account-link { margin-right: 12px; }
 
 /* AI Provider Status */
 .ai-provider-card {
@@ -172,18 +173,25 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .market-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
 .market-select { background: var(--card2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 5px 8px; }
 #supertrend-dashboard[hidden] { display: none; }
-.indicator-controls { border: 1px solid var(--border); border-radius: 8px; background: var(--card2); padding: 8px; margin: 0 0 8px; }
-.indicator-add-row { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.indicator-controls { border: 1px solid var(--border); border-radius: 8px; background: var(--card2); padding: 5px 7px; margin: 0 0 6px; }
+.indicator-add-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .indicator-add-row label { margin-right: 2px; }
-.indicator-add-row .market-select { max-width: min(100%, 260px); }
+.indicator-add-row .market-select { max-width: min(100%, 240px); padding: 3px 6px; font-size: 10px; }
+.indicator-add-row .btn.tiny { margin-top: 0; padding: 3px 7px; font-size: 10px; }
 .indicator-add-row button:disabled { opacity: .5; cursor: not-allowed; }
-.active-indicators { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 7px; }
-.indicator-pill { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #334155; border-radius: 999px; padding: 2px 5px 2px 9px; color: var(--text); background: rgba(59,130,246,.1); font-size: 10px; }
+.active-indicators { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 5px; }
+.indicator-pill { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #334155; border-radius: 999px; padding: 1px 4px 1px 7px; color: var(--text); background: rgba(59,130,246,.1); font-size: 9px; }
 .indicator-pill button { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
 .indicator-pill button:hover { color: var(--red); }
-.indicator-readouts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
-.indicator-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 4px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 10px; }
+.indicator-readouts { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
+.indicator-readout { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; padding: 3px 6px; border: 1px solid var(--border); border-radius: 6px; font-size: 9px; }
 .indicator-readout b { color: var(--muted); font-weight: 600; }
+.chart-drawing-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin: 0 0 5px; }
+.drawing-label { color: var(--muted); font-size: 10px; font-weight: 600; margin-right: 2px; }
+.chart-drawing-tools .btn.tiny { margin-top: 0; padding: 2px 6px; font-size: 10px; }
+.chart-drawing-tools .btn.active { border-color: var(--amber); color: #fde68a; background: rgba(245,158,11,.12); }
+#drawing-status { font-size: 10px; }
+#btn-clear-drawings { color: var(--muted); }
 #supertrend-dashboard { display: flex; justify-content: flex-end; margin: 0 0 6px; }
 #supertrend-dashboard table { width: auto; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--card2); font-size: 10px; }
 #supertrend-dashboard caption { color: var(--muted); padding: 3px 6px 1px; font-size: 9px; line-height: 1.2; text-align: left; }
