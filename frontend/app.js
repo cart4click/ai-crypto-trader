@@ -549,15 +549,17 @@ function calculateSupertrend(candles, period = 10, multiplier = 3) {
 }
 
 function renderSupertrendDashboard(results) {
-  const rows = ["15m", "30m", "1h", "4h"].map(interval => {
+  const intervals = ["15m", "30m", "1h", "4h"];
+  const headings = intervals.map(interval => `<th scope="col">${interval}</th>`).join("");
+  const states = intervals.map(interval => {
     const state = results[interval];
     const label = state === "Bullish" || state === "Bearish" ? state : state || "Unavailable";
     const css = state === "Bullish" ? "bullish" : state === "Bearish" ? "bearish" : "unavailable";
-    return `<tr><td>${interval}</td><td><span class="supertrend-state ${css}">${label}</span></td></tr>`;
+    return `<td><span class="supertrend-state ${css}">${label}</span></td>`;
   }).join("");
   $("#supertrend-dashboard").innerHTML = `<table aria-label="Multi-timeframe Supertrend dashboard">
     <caption>Supertrend · ATR 10 / factor 3</caption>
-    <thead><tr><th>Timeframe</th><th>Trend</th></tr></thead><tbody>${rows}</tbody></table>`;
+    <thead><tr>${headings}</tr></thead><tbody><tr>${states}</tr></tbody></table>`;
 }
 
 async function fetchBinanceCandles(symbol, interval, limit = 168) {

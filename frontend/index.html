@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=compact-supertrend-overlay" />
+  <link rel="stylesheet" href="/style.css?v=supertrend-chart-clearance" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js"></script>
 </head>
@@ -82,10 +82,10 @@
           <button id="btn-market-refresh" class="btn tiny">↻ Refresh market</button>
           <span id="market-updated" class="muted small">Auto refresh: 10 seconds</span>
         </div>
+        <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
         <div class="chart-wrap">
           <canvas id="chart" aria-label="Price history and forecast chart"></canvas>
           <div id="chart-message" class="chart-message">Add a coin to load its live market chart.</div>
-          <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
         </div>
         <div id="ai-note" class="ai-note muted small"></div>
       </div>
