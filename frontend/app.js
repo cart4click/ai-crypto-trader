@@ -609,10 +609,15 @@ function setChartMessage(message) {
 
 /* --------------------------------------------------------------------- news */
 const PUBLIC_NEWS_FEEDS = [
-  ["CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"],
-  ["The Block", "https://www.theblock.co/rss.xml"],
-  ["Decrypt", "https://decrypt.co/feed"],
-  ["Cointelegraph", "https://cointelegraph.com/rss"],
+  { source: "CoinDesk", url: "https://www.coindesk.com/arc/outboundfeeds/rss/" },
+  { source: "The Block", url: "https://www.theblock.co/rss.xml" },
+  { source: "Decrypt", url: "https://decrypt.co/feed" },
+  { source: "Cointelegraph", url: "https://cointelegraph.com/rss" },
+  // Asset-tag feeds keep major altcoin coverage visible alongside BTC headlines.
+  { source: "Cointelegraph", url: "https://cointelegraph.com/rss/tag/solana", coin: "SOLUSDT" },
+  { source: "Cointelegraph", url: "https://cointelegraph.com/rss/tag/ethereum", coin: "ETHUSDT" },
+  // First-party Solana Foundation updates, alongside independent publisher coverage.
+  { source: "Solana Foundation", url: "https://solana.com/news/rss.xml", coin: "SOLUSDT" },
 ];
 let publicNewsCache = null;
 let publicNewsFetchedAt = 0;
@@ -632,7 +637,7 @@ function newsAge(value) {
 function safeNewsUrl(value) {
   try {
     const url = new URL(value);
-    const trustedHosts = ["coindesk.com", "theblock.co", "decrypt.co", "cointelegraph.com"];
+    const trustedHosts = ["coindesk.com", "theblock.co", "decrypt.co", "cointelegraph.com", "solana.com"];
     return url.protocol === "https:" && trustedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))
       ? url.href : "";
   } catch { return ""; }
@@ -657,7 +662,7 @@ function headlineTone(items) {
 
 async function fetchPublicNews(force = false) {
   if (!force && publicNewsCache && Date.now() - publicNewsFetchedAt < 10 * 60 * 1000) return publicNewsCache;
-  const results = await Promise.allSettled(PUBLIC_NEWS_FEEDS.map(async ([source, feedUrl]) => {
+  const results = await Promise.allSettled(PUBLIC_NEWS_FEEDS.map(async ({ source, url: feedUrl, coin }) => {
     const endpoint = new URL("https://api.rss2json.com/v1/api.json");
     endpoint.searchParams.set("rss_url", feedUrl);
     const response = await fetch(endpoint, { cache: "no-store" });
@@ -669,6 +674,7 @@ async function fetchPublicNews(force = false) {
       summary: cleanNewsText(item.description || item.content).slice(0, 700),
       url: item.link,
       source,
+      coin,
       published: item.pubDate,
     }));
   }));
@@ -680,10 +686,10 @@ async function fetchPublicNews(force = false) {
     if (!key || seen.has(key)) return false;
     seen.add(key);
     const timestamp = Date.parse(item.published);
-    return !Number.isFinite(timestamp) || Date.now() - timestamp < 72 * 3600000;
+    return !Number.isFinite(timestamp) || Date.now() - timestamp < 7 * 24 * 3600000;
   }).map(item => ({
     ...item,
-    coins: newsCoins(item),
+    coins: [...new Set([...newsCoins(item), ...(item.coin ? [item.coin] : [])])],
     age: newsAge(item.published),
   })).sort((a, b) => (Date.parse(b.published) || 0) - (Date.parse(a.published) || 0));
   const market = headlineTone(recent);
