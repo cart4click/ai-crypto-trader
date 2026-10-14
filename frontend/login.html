@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#0b0f17" />
   <title>Sign in · AI Crypto Trader C4C</title>
-  <link rel="stylesheet" href="/style.css?v=chart-drawing-tools" />
+  <link rel="stylesheet" href="/style.css?v=email-only-login" />
   <script src="/config.js"></script>
-  <script src="/login.js?v=chart-drawing-tools" defer></script>
+  <script src="/login.js?v=email-only-login" defer></script>
 </head>
 <body class="login-page">
   <header class="login-header">
@@ -19,26 +19,26 @@
   </header>
   <main class="login-main">
     <section class="login-card card" aria-labelledby="login-title">
-      <div class="login-eyebrow">SECURE EMAIL SIGN-IN</div>
-      <h1 id="login-title">Sign in to your account</h1>
-      <p class="muted login-intro">Enter your name and email. We’ll send a one-time code to verify it’s you.</p>
+      <div class="login-eyebrow">SECURE EMAIL LOGIN</div>
+      <h1 id="login-title">Already have an account? Log in</h1>
+      <p class="muted login-intro">Enter your email and we’ll send you a one-time code to log in.</p>
       <div class="login-progress" aria-label="Sign-in progress">
-        <span class="current" data-progress="1">1</span><i></i><span data-progress="2">2</span><i></i><span data-progress="3">3</span>
+        <span class="current" data-progress="1">1</span><i></i><span data-progress="2">2</span>
       </div>
-      <form id="name-form" class="login-step">
+      <form id="name-form" class="login-step" hidden>
         <label for="first-name">First name</label>
         <input id="first-name" name="given-name" autocomplete="given-name" maxlength="60" required />
         <label for="last-name">Last name</label>
         <input id="last-name" name="family-name" autocomplete="family-name" maxlength="60" required />
         <button class="btn primary login-next" type="submit">Next</button>
       </form>
-      <form id="email-form" class="login-step" hidden>
-        <div class="login-step-label">Your name <b id="name-summary"></b></div>
+      <form id="email-form" class="login-step">
+        <div id="name-summary-wrap" class="login-step-label" hidden>Your name <b id="name-summary"></b></div>
         <label for="email-address">Email address</label>
         <input id="email-address" name="email" type="email" autocomplete="email" maxlength="254" required />
         <div class="login-buttons">
-          <button class="btn" type="button" data-back="name">Back</button>
-          <button class="btn primary" type="submit">Send code</button>
+          <button id="cancel-signup" class="btn" type="button" hidden>Back</button>
+          <button class="btn primary" type="submit">Email me a login code</button>
         </div>
       </form>
       <form id="code-form" class="login-step" hidden>
@@ -47,16 +47,18 @@
         <input id="email-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required />
         <div class="login-buttons">
           <button class="btn" type="button" data-back="email">Back</button>
-          <button class="btn primary" type="submit">Verify and sign in</button>
+          <button class="btn primary" type="submit">Verify and log in</button>
         </div>
         <button id="resend-code" class="link-button" type="button" disabled>Resend code in 60s</button>
       </form>
       <div id="login-message" class="login-message" role="status" aria-live="polite" hidden></div>
       <div id="signed-in-panel" class="signed-in-panel" hidden>
         <p>You’re already signed in as <b id="signed-in-name"></b>.</p>
+        <button id="show-login" class="btn" type="button">Log in with email</button>
         <a class="btn primary" href="/">Continue to market</a>
         <button id="sign-out" class="link-button" type="button">Sign out</button>
       </div>
+      <p id="signup-prompt" class="login-footnote">New here? <button id="show-signup" class="link-button" type="button">Create an account</button></p>
       <p class="login-footnote">Codes expire after 10 minutes. Never share a sign-in code with anyone.</p>
     </section>
   </main>

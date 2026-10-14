@@ -10,6 +10,7 @@
   let email = "";
   let challengeId = "";
   let resendTimer;
+  let signupMode = false;
 
   function showMessage(text, error = false) {
     message.textContent = text;
@@ -21,9 +22,20 @@
     nameForm.hidden = step !== "name";
     emailForm.hidden = step !== "email";
     codeForm.hidden = step !== "code";
+    document.querySelector(".login-progress").hidden = step === "signed-in";
+    $("#signed-in-panel").hidden = step !== "signed-in";
+    $("#signup-prompt").hidden = step === "signed-in" || step === "code";
+    $("#name-summary-wrap").hidden = !signupMode || step !== "email";
+    $("#cancel-signup").hidden = !signupMode || step !== "email";
+    $("#login-title").textContent = step === "name" ? "Create your account" : step === "signed-in" ? "You’re already signed in" : step === "code" ? "Check your email" : signupMode ? "Create your account" : "Already have an account? Log in";
+    $(".login-intro").hidden = step === "signed-in";
+    $(".login-intro").textContent = signupMode
+      ? "Create your account with your name and email. We’ll send a code to verify your email."
+      : "Enter your email and we’ll send you a one-time code to log in.";
+    const progress = signupMode ? { name: "1", email: "2", code: "2" }[step] : { name: "1", email: "1", code: "2" }[step];
     document.querySelectorAll("[data-progress]").forEach(node => {
-      node.classList.toggle("current", node.dataset.progress === ({ name: "1", email: "2", code: "3" }[step]));
-      node.classList.toggle("complete", Number(node.dataset.progress) < Number(({ name: "1", email: "2", code: "3" }[step])));
+      node.classList.toggle("current", node.dataset.progress === progress);
+      node.classList.toggle("complete", Number(node.dataset.progress) < Number(progress));
     });
     showMessage("");
   }
@@ -50,7 +62,7 @@
     }
     const response = await fetch(`${API_BASE_URL}/api/auth/request-code`, {
       method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ first_name: firstName, last_name: lastName, email }),
+      body: JSON.stringify({ first_name: signupMode ? firstName : "", last_name: signupMode ? lastName : "", email }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.detail || data.error || `Could not send the code (HTTP ${response.status}).`);
@@ -58,7 +70,7 @@
     $("#email-summary").textContent = email;
     $("#email-code").value = "";
     setStep("code");
-    showMessage("Check your inbox for a six-digit sign-in code.");
+    showMessage("Check your inbox for a six-digit code to continue.");
     startResendTimer();
     $("#email-code").focus();
   }
@@ -69,6 +81,7 @@
     lastName = $("#last-name").value.trim();
     if (!firstName || !lastName) return;
     $("#name-summary").textContent = `${firstName} ${lastName}`;
+    signupMode = true;
     setStep("email");
     $("#email-address").focus();
   });
@@ -86,7 +99,7 @@
     submit.textContent = "Sending…";
     try { await requestCode(); }
     catch (error) { showMessage(error.message, true); }
-    finally { submit.disabled = false; submit.textContent = "Send code"; }
+    finally { submit.disabled = false; submit.textContent = signupMode ? "Send code" : "Email me a login code"; }
   });
 
   codeForm.addEventListener("submit", async event => {
@@ -107,16 +120,35 @@
       if (!response.ok) throw new Error(data.detail || data.error || `Could not verify the code (HTTP ${response.status}).`);
       localStorage.setItem("c4c-auth-session", data.session_token);
       localStorage.setItem("c4c-auth-user", JSON.stringify(data.user));
-      showMessage("Email verified. You’re signed in.");
+      showMessage("Email verified. You’re logged in.");
       $("#email-code").disabled = true;
       setTimeout(() => { location.href = "/"; }, 900);
     } catch (error) { showMessage(error.message, true); }
-    finally { submit.disabled = false; submit.textContent = "Verify and sign in"; }
+    finally { submit.disabled = false; submit.textContent = "Verify and log in"; }
   });
 
   document.querySelectorAll("[data-back]").forEach(button => button.addEventListener("click", () => {
     setStep(button.dataset.back);
   }));
+
+  $("#show-login").addEventListener("click", () => {
+    signupMode = false;
+    challengeId = "";
+    $("#email-address").value = "";
+    setStep("email");
+    $("#email-address").focus();
+  });
+
+  $("#show-signup").addEventListener("click", () => {
+    signupMode = true;
+    setStep("name");
+    $("#first-name").focus();
+  });
+
+  $("#cancel-signup").addEventListener("click", () => {
+    signupMode = false;
+    setStep("email");
+  });
 
   $("#resend-code").addEventListener("click", async event => {
     const button = event.currentTarget;
@@ -132,12 +164,10 @@
   try {
     const storedUser = JSON.parse(localStorage.getItem("c4c-auth-user") || "null");
     if (localStorage.getItem("c4c-auth-session") && storedUser?.first_name) {
-      nameForm.hidden = emailForm.hidden = codeForm.hidden = true;
-      document.querySelector(".login-progress").hidden = true;
-      $(".login-intro").hidden = true;
-      $("#signed-in-panel").hidden = false;
-      $("#signed-in-name").textContent = `${storedUser.first_name} ${storedUser.last_name}`;
-      $("#login-title").textContent = "You’re already signed in";
+      $("#signed-in-name").textContent = storedUser.first_name === "there"
+        ? storedUser.email
+        : `${storedUser.first_name} ${storedUser.last_name}`.trim();
+      setStep("signed-in");
     }
   } catch { /* Start a new sign-in if local browser data is invalid. */ }
 

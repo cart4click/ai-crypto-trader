@@ -52,7 +52,7 @@ function renderAccountLink() {
     accountLink.onclick = null;
     return;
   }
-  accountLink.textContent = "Account";
+  accountLink.textContent = "Sign in";
   accountLink.href = "/login.html";
   accountLink.onclick = null;
 }

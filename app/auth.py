@@ -27,8 +27,8 @@ _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 class CodeRequest(BaseModel):
-    first_name: str
-    last_name: str
+    first_name: str = ""
+    last_name: str = ""
     email: str
 
 
@@ -66,8 +66,11 @@ def _send_code_email(recipient: str, first_name: str, code: str) -> None:
 async def request_code(body: CodeRequest, request: Request):
     first_name, last_name = body.first_name.strip(), body.last_name.strip()
     email = body.email.strip().lower()
-    if not first_name or len(first_name) > 60 or not last_name or len(last_name) > 60:
-        raise HTTPException(400, "Enter a first and last name (60 characters maximum).")
+    if bool(first_name) != bool(last_name):
+        raise HTTPException(400, "Enter both first and last name, or leave both blank to log in.")
+    if len(first_name) > 60 or len(last_name) > 60:
+        raise HTTPException(400, "Names must be 60 characters maximum.")
+    first_name = first_name or "there"
     if len(email) > 254 or not _EMAIL_RE.fullmatch(email):
         raise HTTPException(400, "Enter a valid email address.")
     if not all((settings.smtp_host, settings.smtp_from_email)):
