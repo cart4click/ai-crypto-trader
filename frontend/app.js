@@ -33,6 +33,34 @@ function clearToken() {
 let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
+const ACCOUNT_SESSION_KEY = "c4c-auth-session";
+const ACCOUNT_USER_KEY = "c4c-auth-user";
+const accountLink = $("#account-link");
+function renderAccountLink() {
+  if (!accountLink) return;
+  let user;
+  try { user = JSON.parse(localStorage.getItem(ACCOUNT_USER_KEY) || "null"); } catch { user = null; }
+  if (!localStorage.getItem(ACCOUNT_SESSION_KEY) || !user?.first_name) {
+    accountLink.textContent = "Sign in";
+    accountLink.href = "/login.html";
+    accountLink.onclick = null;
+    return;
+  }
+  accountLink.textContent = `Sign out · ${user.first_name}`;
+  accountLink.href = "#sign-out";
+  accountLink.onclick = async event => {
+    event.preventDefault();
+    try {
+      if (API_BASE_URL) await fetch(`${API_BASE_URL}/api/auth/logout`, {
+        method: "POST", headers: { Authorization: `Bearer ${localStorage.getItem(ACCOUNT_SESSION_KEY)}` },
+      });
+    } catch { /* Local sign-out still clears this browser session. */ }
+    localStorage.removeItem(ACCOUNT_SESSION_KEY);
+    localStorage.removeItem(ACCOUNT_USER_KEY);
+    renderAccountLink();
+  };
+}
+renderAccountLink();
 
 // Keep only the requested compact shortcuts; users can search for any other market below.
 const QUICK = ["SOL", "BTC", "ETH", "XRP", "BNB"];

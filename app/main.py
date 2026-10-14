@@ -18,6 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import ai_provider
+from .auth import router as auth_router
 
 from . import forecast
 from .ai_provider import get_global_provider_manager
@@ -50,13 +51,14 @@ if settings.app_cors_origins:
         CORSMiddleware,
         allow_origins=settings.app_cors_origins,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-App-Token"],
+        allow_headers=["Authorization", "Content-Type", "X-App-Token"],
     )
 
 
 @app.middleware("http")
 async def token_guard(request: Request, call_next):
-    if settings.app_token and request.url.path.startswith("/api/"):
+    if (settings.app_token and request.url.path.startswith("/api/")
+            and not request.url.path.startswith("/api/auth/")):
         tok = request.headers.get("X-App-Token") or request.query_params.get("token")
         if tok != settings.app_token:
             return JSONResponse({"error": "unauthorized — X-App-Token required"}, status_code=401)
@@ -663,6 +665,9 @@ async def get_ai_chat_response(user_message, context, chat_history=None):
     except Exception as e:
         logging.getLogger(__name__).warning(f"AI chat failed: {e}")
         return "I'm having trouble connecting to my AI provider right now. Please try again or use specific commands like 'report' or 'balance'."
+
+
+app.include_router(auth_router)
 
 
 async def get_live_market_snapshot(symbols: list[str]) -> list[dict]:

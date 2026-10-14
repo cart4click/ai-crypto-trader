@@ -205,6 +205,40 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .chart-wrap { position: relative; height: 380px; }
 .ai-note { margin-top: 8px; }
 
+/* Email sign-in */
+.login-header { justify-content: space-between; padding: 12px max(20px, calc((100% - 1040px) / 2)); }
+.login-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); text-decoration: none; font-weight: 700; }
+.login-brand small { color: var(--muted); font-weight: 400; }
+.login-main { display: grid; grid-template-columns: 1fr; place-items: center; min-height: calc(100vh - 60px); padding: 28px 16px; }
+.login-card { width: min(100%, 440px); padding: 26px; }
+.login-eyebrow { color: #93c5fd; font-size: 10px; font-weight: 700; letter-spacing: .1em; margin-bottom: 8px; }
+.login-card h1 { font-size: 22px; margin: 0; }
+.login-intro { font-size: 13px; line-height: 1.5; margin: 8px 0 18px; }
+.login-progress { display: flex; align-items: center; justify-content: center; gap: 9px; margin: 18px 0 22px; }
+.login-progress span { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid var(--border); border-radius: 50%; color: var(--muted); font-size: 11px; }
+.login-progress span.current { border-color: var(--blue); background: var(--blue); color: white; }
+.login-progress span.complete { border-color: #166534; background: #14532d; color: #bbf7d0; }
+.login-progress i { width: 38px; height: 1px; background: var(--border); }
+.login-step { display: flex; flex-direction: column; gap: 8px; }
+.login-step[hidden], .login-message[hidden], .signed-in-panel[hidden] { display: none; }
+.login-step label { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.login-step input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 11px 12px; font: inherit; outline: none; }
+.login-step input:focus { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(59,130,246,.18); }
+.login-next { width: 100%; margin-top: 10px; padding: 10px 12px !important; }
+.login-buttons { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.login-buttons button { padding: 9px 13px !important; }
+.login-step-label { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 0 0 3px; }
+.login-step-label b { color: var(--text); overflow-wrap: anywhere; }
+.link-button { align-self: center; border: 0; background: none; color: #93c5fd; cursor: pointer; padding: 9px; font: inherit; font-size: 12px; }
+.link-button:disabled { color: var(--muted); cursor: default; }
+.login-message { margin-top: 14px; border: 1px solid #14532d; background: rgba(34,197,94,.08); color: #bbf7d0; padding: 9px 10px; border-radius: 7px; font-size: 12px; line-height: 1.45; }
+.login-message.error { border-color: #7f1d1d; background: rgba(239,68,68,.08); color: #fecaca; }
+.login-footnote { color: var(--muted); font-size: 10px; line-height: 1.4; border-top: 1px solid var(--border); margin: 18px 0 0; padding-top: 12px; }
+.signed-in-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.signed-in-panel p { color: var(--muted); }
+.signed-in-panel p b { color: var(--text); }
+@media (max-width: 520px) { .login-header { padding: 10px 14px; } .login-card { padding: 20px; } }
+
 /* forecast grid */
 .fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
 .fcell { background: var(--card2); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }

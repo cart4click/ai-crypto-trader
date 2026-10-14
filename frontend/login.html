@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#0b0f17" />
+  <title>Sign in · AI Crypto Trader C4C</title>
+  <link rel="stylesheet" href="/style.css?v=email-sign-in" />
+  <script src="/config.js"></script>
+  <script src="/login.js?v=email-sign-in" defer></script>
+</head>
+<body class="login-page">
+  <header class="login-header">
+    <a class="login-brand" href="/" aria-label="AI Crypto Trader home">
+      <img class="logo" src="/ai-crypto-trader.png" alt="" />
+      <span>AI Crypto Trader <small>· C4C</small></span>
+    </a>
+    <a class="btn" href="/">Back to market</a>
+  </header>
+  <main class="login-main">
+    <section class="login-card card" aria-labelledby="login-title">
+      <div class="login-eyebrow">SECURE EMAIL SIGN-IN</div>
+      <h1 id="login-title">Sign in to your account</h1>
+      <p class="muted login-intro">Enter your name and email. We’ll send a one-time code to verify it’s you.</p>
+      <div class="login-progress" aria-label="Sign-in progress">
+        <span class="current" data-progress="1">1</span><i></i><span data-progress="2">2</span><i></i><span data-progress="3">3</span>
+      </div>
+      <form id="name-form" class="login-step">
+        <label for="first-name">First name</label>
+        <input id="first-name" name="given-name" autocomplete="given-name" maxlength="60" required />
+        <label for="last-name">Last name</label>
+        <input id="last-name" name="family-name" autocomplete="family-name" maxlength="60" required />
+        <button class="btn primary login-next" type="submit">Next</button>
+      </form>
+      <form id="email-form" class="login-step" hidden>
+        <div class="login-step-label">Your name <b id="name-summary"></b></div>
+        <label for="email-address">Email address</label>
+        <input id="email-address" name="email" type="email" autocomplete="email" maxlength="254" required />
+        <div class="login-buttons">
+          <button class="btn" type="button" data-back="name">Back</button>
+          <button class="btn primary" type="submit">Send code</button>
+        </div>
+      </form>
+      <form id="code-form" class="login-step" hidden>
+        <p class="login-step-label">Enter the six-digit code sent to <b id="email-summary"></b></p>
+        <label for="email-code">One-time code</label>
+        <input id="email-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" placeholder="000000" required />
+        <div class="login-buttons">
+          <button class="btn" type="button" data-back="email">Back</button>
+          <button class="btn primary" type="submit">Verify and sign in</button>
+        </div>
+        <button id="resend-code" class="link-button" type="button" disabled>Resend code in 60s</button>
+      </form>
+      <div id="login-message" class="login-message" role="status" aria-live="polite" hidden></div>
+      <div id="signed-in-panel" class="signed-in-panel" hidden>
+        <p>You’re signed in as <b id="signed-in-name"></b>.</p>
+        <a class="btn primary" href="/">Continue to market</a>
+        <button id="sign-out" class="link-button" type="button">Sign out</button>
+      </div>
+      <p class="login-footnote">Codes expire after 10 minutes. Never share a sign-in code with anyone.</p>
+    </section>
+  </main>
+</body>
+</html>

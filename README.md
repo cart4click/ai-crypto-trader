@@ -118,7 +118,7 @@ to GitHub Pages. The price chart reads public hourly candles from Binance and
 works without the app server. The static site also has a browser-saved watchlist
 of popular Binance USDT pairs and can load their public prices without an API
 key. GitHub Pages cannot run the FastAPI app, so forecasts, trading controls,
-and other dashboard API features require a separate server running `run.py`.
+and email sign-in require a separate server running `run.py`.
 
 1. Deploy the FastAPI app on a server or Python application host with a public
    **HTTPS** URL. Keep `APP_HOST=0.0.0.0`, set a long `APP_TOKEN`, and set
@@ -130,6 +130,28 @@ and other dashboard API features require a separate server running `run.py`.
 3. In GitHub, open **Settings → Pages** and enable **Enforce HTTPS** for the
    custom domain. In IONOS, keep the domain's DNS pointed at GitHub Pages; the
    certificate and HTTP-to-HTTPS redirect are managed by GitHub Pages.
+
+### Email sign-in setup
+
+The sign-in page sends a six-digit, single-use code through the FastAPI backend.
+Configure an authenticated SMTP mailbox on that backend before enabling it:
+
+```dotenv
+SMTP_HOST=smtp.your-provider.example
+SMTP_PORT=587
+SMTP_USERNAME=your-mailbox@example.com
+SMTP_PASSWORD=your-mailbox-password
+SMTP_FROM_EMAIL=your-mailbox@example.com
+```
+
+Use the SMTP host and credentials provided by your email host (IONOS if using
+an IONOS mailbox). Keep these values only in the backend environment, never in
+the GitHub Pages frontend. The login endpoints are exempt from `APP_TOKEN` so
+visitors can request a code; configure `APP_CORS_ORIGINS` for the website's
+HTTPS origins and set `API_BASE_URL` to the HTTPS backend origin. Codes expire
+after 10 minutes, allow five verification attempts, and are rate limited.
+The current lightweight sign-in sessions and rate limits are held in backend
+memory, so a backend restart clears existing sign-ins.
 
 Do not put Binance, Telegram, or AI provider credentials in `frontend/` or
 `config.js`; those belong only in the backend's environment. The chart displays
