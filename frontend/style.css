@@ -150,6 +150,7 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .crypto-events-link small { margin-top: 3px; color: var(--muted); font-size: 11px; }
 .crypto-events-link > span:last-child { color: #93c5fd; font-size: 17px; }
 .market-events-attribution { line-height: 1.4; margin: 10px 0 0; }
+.news-empty-state { border: 1px dashed var(--border); border-radius: 8px; padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
 
 /* coins */
 .add-coin { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -200,8 +201,12 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .drawing-label { color: var(--muted); font-size: 10px; font-weight: 600; margin-right: 2px; }
 .chart-drawing-tools .btn.tiny { margin-top: 0; padding: 2px 6px; font-size: 10px; }
 .chart-drawing-tools .btn.active { border-color: var(--amber); color: #fde68a; background: rgba(245,158,11,.12); }
+.drawing-text-input { width: 120px; min-width: 90px; border: 1px solid var(--border); border-radius: 6px; background: var(--card2); color: var(--text); padding: 4px 7px; font-size: 10px; }
 #drawing-status { font-size: 10px; }
 #btn-clear-drawings { color: var(--muted); }
+.market-notes-card textarea { display: block; width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); color: var(--text); padding: 10px; font: inherit; font-size: 13px; line-height: 1.5; }
+.market-notes-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
+.market-notes-footer .btn { margin-top: 0; }
 #supertrend-dashboard { display: flex; justify-content: flex-end; margin: 0 0 6px; }
 #supertrend-dashboard table { width: auto; min-width: 0; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--card2); font-size: 10px; }
 #supertrend-dashboard caption { color: var(--muted); padding: 3px 6px 1px; font-size: 9px; line-height: 1.2; text-align: left; }

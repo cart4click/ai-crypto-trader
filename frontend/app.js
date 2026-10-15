@@ -69,13 +69,33 @@ function loadChartDrawings(symbol) {
     const saved = JSON.parse(localStorage.getItem(chartDrawingKey) || "[]");
     return Array.isArray(saved) ? saved.filter(line =>
       (line.type === "horizontal" && Number.isFinite(line.price)) ||
-      (line.type === "vertical" && Number.isFinite(line.index))) : [];
+      (line.type === "vertical" && Number.isFinite(line.index)) ||
+      (line.type === "freehand" && Array.isArray(line.points) && line.points.length > 1 && line.points.every(point => Number.isFinite(point.index) && Number.isFinite(point.price))) ||
+      (line.type === "text" && Number.isFinite(line.index) && Number.isFinite(line.price) && typeof line.text === "string" && line.text.length > 0)) : [];
   } catch { return []; }
 }
 
 function saveChartDrawings() {
   if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
 }
+
+function marketNotesKey(symbol = selected) { return `market-notes:${symbol}`; }
+function renderMarketNotes() {
+  const field = $("#market-notes");
+  if (!field) return;
+  field.value = localStorage.getItem(marketNotesKey()) || "";
+  $("#market-notes-status").textContent = selected ? `Saved on this device · ${selected.replace("USDT", "/USDT")}` : "Select a coin to keep notes per market.";
+}
+renderMarketNotes();
+$("#market-notes").addEventListener("input", event => {
+  localStorage.setItem(marketNotesKey(), event.currentTarget.value);
+  $("#market-notes-status").textContent = `Saved on this device · ${selected.replace("USDT", "/USDT")}`;
+});
+$("#btn-clear-market-notes").addEventListener("click", () => {
+  localStorage.removeItem(marketNotesKey());
+  $("#market-notes").value = "";
+  $("#market-notes-status").textContent = "Note cleared.";
+});
 
 function chartViewportKey(symbol = selected) { return `${symbol}:${chartInterval}`; }
 
@@ -100,6 +120,7 @@ if (!localWatchlist.includes(selected)) {
   selected = localWatchlist[0] || "";
   localStorage.setItem("selected_symbol", selected);
 }
+renderMarketNotes();
 let publicWatchlistPrices = {};
 let publicWatchlistFetchedAt = 0;
 
@@ -232,6 +253,7 @@ async function refreshCoins(forceMarket = false) {
     selected = list[0]?.symbol || "";
     localStorage.setItem("selected_symbol", selected);
   }
+  renderMarketNotes();
   $("#coins-list").innerHTML = list.length ? list.map(coinCard).join("") :
     '<div class="muted small">No coins yet — add one above.</div>';
   if (selected) {
@@ -327,7 +349,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
   const act = ev.target.dataset.act;
 
   if (!act) { // open settings / select
-    if (selected !== sym) { selected = sym; localStorage.setItem("selected_symbol", sym); refreshCoins(); refreshForecast(); }
+    if (selected !== sym) { selected = sym; localStorage.setItem("selected_symbol", sym); renderMarketNotes(); refreshCoins(); refreshForecast(); }
     else card.classList.toggle("open");
     return;
   }
@@ -338,6 +360,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
       if (selected === sym) {
         selected = localWatchlist[0] || "";
         localStorage.setItem("selected_symbol", selected);
+        renderMarketNotes();
       }
       await refreshPublicWatchlist(true);
       if (selected) await refreshForecast();
@@ -389,6 +412,7 @@ async function addCoin(sym) {
       }
       selected = symbol;
       localStorage.setItem("selected_symbol", selected);
+      renderMarketNotes();
       await refreshPublicWatchlist(true);
       await refreshForecast();
       toast(`${symbol} selected for the live chart`);
@@ -925,6 +949,28 @@ const chartDrawingOverlay = {
         ctx.moveTo(pixel, chartArea.top);
         ctx.lineTo(pixel, chartArea.bottom);
         ctx.stroke();
+      } else if (line.type === "freehand" && line.points?.length > 1) {
+        ctx.setLineDash([]);
+        ctx.lineWidth = 2;
+        line.points.forEach((point, index) => {
+          const px = x.getPixelForValue(point.index);
+          const py = y.getPixelForValue(point.price);
+          if (index === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        ctx.stroke();
+        ctx.lineWidth = 1.25;
+        ctx.setLineDash([5, 4]);
+      } else if (line.type === "text") {
+        const px = x.getPixelForValue(line.index);
+        const py = y.getPixelForValue(line.price);
+        ctx.setLineDash([]);
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "left";
+        ctx.textBaseline = "top";
+        const lines = line.text.split("\n").slice(0, 4);
+        lines.forEach((text, index) => ctx.fillText(text.slice(0, 80), px + 5, py + 5 + index * 15, 220));
+        ctx.setLineDash([5, 4]);
       }
     });
     ctx.restore();
@@ -1019,8 +1065,29 @@ document.querySelector(".chart-navigation-tools").addEventListener("click", even
 });
 
 let chartDrag = null;
+let activeFreehand = null;
+function drawingPointFromPointer(event) {
+  if (!chart?.chartArea) return null;
+  const rect = chart.canvas.getBoundingClientRect();
+  const xPixel = (event.clientX - rect.left) * (chart.width / rect.width);
+  const yPixel = (event.clientY - rect.top) * (chart.height / rect.height);
+  const area = chart.chartArea;
+  if (xPixel < area.left || xPixel > area.right || yPixel < area.top || yPixel > area.bottom) return null;
+  return { index: chart.scales.x.getValueForPixel(xPixel), price: chart.scales.y.getValueForPixel(yPixel), xPixel, yPixel };
+}
 $("#chart").addEventListener("pointerdown", event => {
-  if (drawingTool || !chart?.chartArea || event.pointerType !== "mouse" || event.button !== 0) return;
+  if (event.button !== 0) return;
+  if (drawingTool === "freehand") {
+    const point = drawingPointFromPointer(event);
+    if (!point) return;
+    chartDrawings.push({ type: "freehand", points: [{ index: point.index, price: point.price }] });
+    activeFreehand = { drawing: chartDrawings.at(-1), pointerId: event.pointerId, lastX: point.xPixel, lastY: point.yPixel };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    chart.update("none");
+    return;
+  }
+  if (event.pointerType !== "mouse") return;
+  if (drawingTool || !chart?.chartArea) return;
   const rect = event.currentTarget.getBoundingClientRect();
   const x = (event.clientX - rect.left) * (chart.width / rect.width);
   const y = (event.clientY - rect.top) * (chart.height / rect.height);
@@ -1030,6 +1097,17 @@ $("#chart").addEventListener("pointerdown", event => {
   event.currentTarget.setPointerCapture(event.pointerId);
 });
 $("#chart").addEventListener("pointermove", event => {
+  if (activeFreehand?.pointerId === event.pointerId) {
+    const point = drawingPointFromPointer(event);
+    if (!point) return;
+    if (Math.hypot(point.xPixel - activeFreehand.lastX, point.yPixel - activeFreehand.lastY) >= 2) {
+      activeFreehand.drawing.points.push({ index: point.index, price: point.price });
+      activeFreehand.lastX = point.xPixel;
+      activeFreehand.lastY = point.yPixel;
+      chart.update("none");
+    }
+    return;
+  }
   if (!chartDrag || event.pointerId !== chartDrag.pointerId) return;
   const dx = event.clientX - chartDrag.x;
   const dy = event.clientY - chartDrag.y;
@@ -1038,11 +1116,28 @@ $("#chart").addEventListener("pointermove", event => {
   panChartByPixels(dx, dy, false);
 });
 $("#chart").addEventListener("pointerup", event => {
+  if (activeFreehand?.pointerId === event.pointerId) {
+    const drawing = activeFreehand.drawing;
+    activeFreehand = null;
+    if (drawing.points.length < 2) chartDrawings = chartDrawings.filter(item => item !== drawing);
+    else saveChartDrawings();
+    chart.update("none");
+    setDrawingTool(null);
+    return;
+  }
   if (!chartDrag || event.pointerId !== chartDrag.pointerId) return;
   chartDrag = null;
   saveChartViewport();
 });
-$("#chart").addEventListener("pointercancel", () => { chartDrag = null; });
+$("#chart").addEventListener("pointercancel", () => {
+  chartDrag = null;
+  if (activeFreehand) {
+    activeFreehand = null;
+    saveChartDrawings();
+    if (chart) chart.update("none");
+    setDrawingTool(null);
+  }
+});
 
 function setDrawingTool(tool) {
   drawingTool = drawingTool === tool ? null : tool;
@@ -1052,9 +1147,11 @@ function setDrawingTool(tool) {
     button.setAttribute("aria-pressed", String(active));
   });
   $("#chart").style.cursor = drawingTool ? "crosshair" : "default";
-  $("#drawing-status").textContent = drawingTool
-    ? `Click the chart to place a ${drawingTool} line.`
-    : "Choose a line, then click the chart.";
+  $("#drawing-status").textContent = drawingTool === "freehand"
+    ? "Drag across the chart to draw."
+    : drawingTool === "text" ? "Click the chart to place your text."
+      : drawingTool ? `Click the chart to place a ${drawingTool} line.`
+        : "Choose a tool, then draw or click the chart.";
 }
 
 document.querySelector(".chart-drawing-tools").addEventListener("click", event => {
@@ -1069,13 +1166,16 @@ $("#btn-clear-drawings").addEventListener("click", () => {
 });
 $("#chart").addEventListener("click", event => {
   if (!drawingTool || !chart) return;
-  const rect = chart.canvas.getBoundingClientRect();
-  const xPixel = (event.clientX - rect.left) * (chart.width / rect.width);
-  const yPixel = (event.clientY - rect.top) * (chart.height / rect.height);
-  const area = chart.chartArea;
-  if (xPixel < area.left || xPixel > area.right || yPixel < area.top || yPixel > area.bottom) return;
-  if (drawingTool === "horizontal") chartDrawings.push({ type: "horizontal", price: chart.scales.y.getValueForPixel(yPixel) });
-  else chartDrawings.push({ type: "vertical", index: chart.scales.x.getValueForPixel(xPixel) });
+  if (drawingTool === "freehand") return;
+  const point = drawingPointFromPointer(event);
+  if (!point) return;
+  if (drawingTool === "horizontal") chartDrawings.push({ type: "horizontal", price: point.price });
+  else if (drawingTool === "vertical") chartDrawings.push({ type: "vertical", index: point.index });
+  else if (drawingTool === "text") {
+    const text = $("#drawing-text").value.trim();
+    if (!text) { $("#drawing-status").textContent = "Type a short label before placing it."; return; }
+    chartDrawings.push({ type: "text", index: point.index, price: point.price, text });
+  }
   saveChartDrawings();
   chart.update("none");
   setDrawingTool(null);
@@ -1255,7 +1355,7 @@ async function refreshNews(force = false) {
     } catch (feedError) {
       console.warn("publisher news feeds:", feedError.message);
       $("#asset-news").innerHTML = `<div class="muted small">${esc(feedError.message)} <a href="https://www.coindesk.com/" target="_blank" rel="noopener">Open CoinDesk</a></div>`;
-      $("#news-list").innerHTML = '<div class="muted small">News is temporarily unavailable.</div>';
+      $("#news-list").innerHTML = '<div class="news-empty-state">News is unavailable right now. Try refreshing in a little while.</div>';
       return;
     }
   }
@@ -1334,7 +1434,7 @@ async function refreshNews(force = false) {
           ${sentTag(it.score)}<span>${esc(it.source)}</span>${it.age ? `<span>${esc(it.age)}</span>` : ""}
           ${it.coins?.length ? `<span>${it.coins.map(c => c.replace("USDT", "")).join(", ")}</span>` : ""}
         </div>
-      </div>`).join("") || '<div class="muted small">No news loaded.</div>';
+      </div>`).join("") || '<div class="news-empty-state">No upcoming crypto news right now.</div>';
   } catch (e) { console.warn("news render:", e.message); }
 }
 $("#btn-news-refresh").addEventListener("click", () => refreshNews(true));

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=crypto-events-calendar" />
+  <link rel="stylesheet" href="/style.css?v=chart-free-draw-text-notes" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -117,16 +117,25 @@
         </div>
         <div class="chart-drawing-tools" role="toolbar" aria-label="Chart drawing tools">
           <span class="drawing-label">Draw</span>
+          <button class="btn tiny" type="button" data-draw-tool="freehand" aria-pressed="false">✎ Free draw</button>
           <button class="btn tiny" type="button" data-draw-tool="horizontal" aria-pressed="false">━ Horizontal</button>
           <button class="btn tiny" type="button" data-draw-tool="vertical" aria-pressed="false">┃ Vertical</button>
-          <button id="btn-clear-drawings" class="btn tiny" type="button">Clear lines</button>
-          <span id="drawing-status" class="muted small">Choose a line, then click the chart.</span>
+          <input id="drawing-text" class="drawing-text-input" type="text" maxlength="80" placeholder="Text to place" aria-label="Text to place on chart" />
+          <button class="btn tiny" type="button" data-draw-tool="text" aria-pressed="false">T Add text</button>
+          <button id="btn-clear-drawings" class="btn tiny" type="button">Clear drawings</button>
+          <span id="drawing-status" class="muted small">Choose a tool, then draw or click the chart.</span>
         </div>
         <div class="chart-wrap">
           <canvas id="chart" aria-label="Price history and forecast chart"></canvas>
           <div id="chart-message" class="chart-message">Add a coin to load its live market chart.</div>
         </div>
         <div id="ai-note" class="ai-note muted small"></div>
+      </div>
+      <div class="card market-notes-card">
+        <h3>📝 Market notes</h3>
+        <p class="muted small">Your notes are saved in this browser for the selected coin.</p>
+        <textarea id="market-notes" rows="4" maxlength="4000" placeholder="Write your market notes, levels, or trade plan…" aria-label="Market notes"></textarea>
+        <div class="market-notes-footer"><span id="market-notes-status" class="muted small" aria-live="polite">Select a coin to keep notes per market.</span><button id="btn-clear-market-notes" class="btn tiny" type="button">Clear note</button></div>
       </div>
       <div class="card">
         <h3>AI forecast — next 24h</h3>
@@ -155,8 +164,8 @@
         <div id="pending-list"><div class="muted small">None.</div></div>
       </div>
       <div class="card">
-        <h3>🪙 Crypto market events</h3>
-        <p class="muted small market-events-note">Track crypto catalysts such as token launches, exchange listings, protocol upgrades, and unlocks. Event dates and impact are provided by these calendars.</p>
+        <h3>🪙 Upcoming crypto events</h3>
+        <p class="muted small market-events-note">Live event listings open at their source sites; this dashboard does not yet embed an event feed. Choose a source below to see upcoming crypto events.</p>
         <div class="crypto-events-sources">
           <a class="crypto-events-link" href="https://coinmarketcap.com/events/" target="_blank" rel="noopener noreferrer">
             <span><strong>CoinMarketCap</strong><small>Crypto events calendar</small></span><span aria-hidden="true">↗</span>
@@ -165,7 +174,7 @@
             <span><strong>CoinMarketCal</strong><small>Verified crypto catalysts</small></span><span aria-hidden="true">↗</span>
           </a>
         </div>
-        <p class="muted small market-events-attribution">These are crypto-specific events, not national economic releases. Select a source to see its live calendar and event details.</p>
+        <p class="muted small market-events-attribution">If there are no upcoming entries, the selected source will say so. These calendars track crypto events, not national economic releases.</p>
       </div>
       <div class="card">
         <h3>📰 News &amp; AI analysis</h3>
@@ -204,6 +213,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=crypto-events-calendar"></script>
+  <script src="/app.js?v=chart-free-draw-text-notes"></script>
 </body>
 </html>
