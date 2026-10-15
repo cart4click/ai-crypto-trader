@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=chart-free-draw-text-notes" />
+  <link rel="stylesheet" href="/style.css?v=drawing-context-actions" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -122,6 +122,7 @@
           <button class="btn tiny" type="button" data-draw-tool="vertical" aria-pressed="false">┃ Vertical</button>
           <input id="drawing-text" class="drawing-text-input" type="text" maxlength="80" placeholder="Text to place" aria-label="Text to place on chart" />
           <button class="btn tiny" type="button" data-draw-tool="text" aria-pressed="false">T Add text</button>
+          <button id="btn-show-hidden-drawings" class="btn tiny" type="button" hidden>Show hidden</button>
           <button id="btn-clear-drawings" class="btn tiny" type="button">Clear drawings</button>
           <span id="drawing-status" class="muted small">Choose a tool, then draw or click the chart.</span>
         </div>
@@ -213,6 +214,11 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=chart-free-draw-text-notes"></script>
+  <div id="drawing-context-menu" class="drawing-context-menu" role="menu" aria-label="Drawing actions" hidden>
+    <button type="button" role="menuitem" data-drawing-action="delete">Delete</button>
+    <button type="button" role="menuitem" data-drawing-action="copy">Copy</button>
+    <button type="button" role="menuitem" data-drawing-action="hide">Hide</button>
+  </div>
+  <script src="/app.js?v=drawing-context-actions"></script>
 </body>
 </html>

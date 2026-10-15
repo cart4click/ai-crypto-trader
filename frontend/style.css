@@ -204,6 +204,11 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .drawing-text-input { width: 120px; min-width: 90px; border: 1px solid var(--border); border-radius: 6px; background: var(--card2); color: var(--text); padding: 4px 7px; font-size: 10px; }
 #drawing-status { font-size: 10px; }
 #btn-clear-drawings { color: var(--muted); }
+.drawing-context-menu { position: fixed; z-index: 10000; min-width: 150px; padding: 5px; border: 1px solid var(--border); border-radius: 9px; background: #111827; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+.drawing-context-menu[hidden] { display: none; }
+.drawing-context-menu button { display: block; width: 100%; border: 0; border-radius: 6px; padding: 8px 10px; background: transparent; color: var(--text); text-align: left; font-size: 12px; cursor: pointer; }
+.drawing-context-menu button:hover, .drawing-context-menu button:focus-visible { outline: none; background: rgba(59,130,246,.16); }
+.drawing-context-menu button[data-drawing-action="delete"]:hover { color: #fecaca; background: rgba(239,68,68,.16); }
 .market-notes-card textarea { display: block; width: 100%; resize: vertical; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); color: var(--text); padding: 10px; font: inherit; font-size: 13px; line-height: 1.5; }
 .market-notes-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 7px; }
 .market-notes-footer .btn { margin-top: 0; }

@@ -879,6 +879,7 @@ function renderChart(f) {
   };
   applySavedChartViewport(cfg.options, selected);
   chartDrawings = loadChartDrawings(selected);
+  updateHiddenDrawingButton();
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = null;
@@ -933,6 +934,7 @@ const chartDrawingOverlay = {
     ctx.lineWidth = 1.25;
     ctx.setLineDash([5, 4]);
     chartDrawings.forEach(line => {
+      if (line.hidden) return;
       ctx.beginPath();
       if (line.type === "horizontal") {
         const pixel = y.getPixelForValue(line.price);
@@ -1066,6 +1068,7 @@ document.querySelector(".chart-navigation-tools").addEventListener("click", even
 
 let chartDrag = null;
 let activeFreehand = null;
+let contextDrawingIndex = -1;
 function drawingPointFromPointer(event) {
   if (!chart?.chartArea) return null;
   const rect = chart.canvas.getBoundingClientRect();
@@ -1162,6 +1165,7 @@ $("#btn-clear-drawings").addEventListener("click", () => {
   chartDrawings = [];
   saveChartDrawings();
   if (chart) chart.update("none");
+  updateHiddenDrawingButton();
   $("#drawing-status").textContent = "Chart lines cleared.";
 });
 $("#chart").addEventListener("click", event => {
@@ -1180,6 +1184,105 @@ $("#chart").addEventListener("click", event => {
   chart.update("none");
   setDrawingTool(null);
 });
+
+function pointSegmentDistance(px, py, ax, ay, bx, by) {
+  const dx = bx - ax, dy = by - ay;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lengthSq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
+
+function findDrawingAt(clientX, clientY) {
+  if (!chart?.chartArea) return -1;
+  const rect = chart.canvas.getBoundingClientRect();
+  const px = (clientX - rect.left) * (chart.width / rect.width);
+  const py = (clientY - rect.top) * (chart.height / rect.height);
+  const { x, y } = chart.scales;
+  const tolerance = 9;
+  for (let index = chartDrawings.length - 1; index >= 0; index--) {
+    const drawing = chartDrawings[index];
+    if (drawing.hidden) continue;
+    let distance = Infinity;
+    if (drawing.type === "horizontal") distance = Math.abs(py - y.getPixelForValue(drawing.price));
+    else if (drawing.type === "vertical") distance = Math.abs(px - x.getPixelForValue(drawing.index));
+    else if (drawing.type === "text") {
+      const tx = x.getPixelForValue(drawing.index) + 5;
+      const ty = y.getPixelForValue(drawing.price) + 5;
+      const width = Math.min(220, Math.max(20, drawing.text.length * 7));
+      if (px >= tx - tolerance && px <= tx + width + tolerance && py >= ty - tolerance && py <= ty + 24) distance = 0;
+    } else if (drawing.type === "freehand" && drawing.points?.length > 1) {
+      for (let point = 1; point < drawing.points.length; point++) {
+        const a = drawing.points[point - 1], b = drawing.points[point];
+        distance = Math.min(distance, pointSegmentDistance(px, py,
+          x.getPixelForValue(a.index), y.getPixelForValue(a.price),
+          x.getPixelForValue(b.index), y.getPixelForValue(b.price)));
+      }
+    }
+    if (distance <= tolerance) return index;
+  }
+  return -1;
+}
+
+function closeDrawingMenu() {
+  $("#drawing-context-menu").hidden = true;
+  contextDrawingIndex = -1;
+}
+
+function updateHiddenDrawingButton() {
+  const count = chartDrawings.filter(drawing => drawing.hidden).length;
+  const button = $("#btn-show-hidden-drawings");
+  button.hidden = count === 0;
+  button.textContent = count ? `Show hidden (${count})` : "Show hidden";
+}
+
+$("#chart").addEventListener("contextmenu", event => {
+  const index = findDrawingAt(event.clientX, event.clientY);
+  if (index < 0) { closeDrawingMenu(); return; }
+  event.preventDefault();
+  contextDrawingIndex = index;
+  const menu = $("#drawing-context-menu");
+  menu.hidden = false;
+  const left = Math.min(event.clientX, window.innerWidth - menu.offsetWidth - 8);
+  const top = Math.min(event.clientY, window.innerHeight - menu.offsetHeight - 8);
+  menu.style.left = `${Math.max(8, left)}px`;
+  menu.style.top = `${Math.max(8, top)}px`;
+  menu.querySelector("button")?.focus();
+});
+
+$("#drawing-context-menu").addEventListener("click", event => {
+  const action = event.target.closest("[data-drawing-action]")?.dataset.drawingAction;
+  const drawing = chartDrawings[contextDrawingIndex];
+  if (!action || !drawing) { closeDrawingMenu(); return; }
+  if (action === "delete") chartDrawings.splice(contextDrawingIndex, 1);
+  if (action === "hide") drawing.hidden = true;
+  if (action === "copy") {
+    const copy = JSON.parse(JSON.stringify(drawing));
+    delete copy.hidden;
+    const yRange = chart?.scales?.y ? chart.scales.y.max - chart.scales.y.min : 0;
+    const priceNudge = Number.isFinite(yRange) ? yRange * 0.015 : 0;
+    if (copy.type === "horizontal") copy.price += priceNudge;
+    else if (copy.type === "vertical") copy.index += 1;
+    else if (copy.type === "text") { copy.index += 1; copy.price += priceNudge; }
+    else if (copy.type === "freehand") copy.points = copy.points.map(point => ({ index: point.index + 1, price: point.price + priceNudge }));
+    chartDrawings.splice(contextDrawingIndex + 1, 0, copy);
+  }
+  saveChartDrawings();
+  if (chart) chart.update("none");
+  updateHiddenDrawingButton();
+  closeDrawingMenu();
+});
+
+$("#btn-show-hidden-drawings").addEventListener("click", () => {
+  chartDrawings.forEach(drawing => { drawing.hidden = false; });
+  saveChartDrawings();
+  if (chart) chart.update("none");
+  updateHiddenDrawingButton();
+});
+
+document.addEventListener("pointerdown", event => {
+  if (!event.target.closest("#drawing-context-menu")) closeDrawingMenu();
+});
+document.addEventListener("keydown", event => { if (event.key === "Escape") closeDrawingMenu(); });
 
 async function renderPublicMarketChart(symbol) {
   if (!window.Chart) throw new Error("Chart library did not load. Reload the page to try again.");
@@ -1232,6 +1335,7 @@ async function renderPublicMarketChart(symbol) {
   };
   applySavedChartViewport(cfg.options, symbol);
   chartDrawings = loadChartDrawings(symbol);
+  updateHiddenDrawingButton();
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = chartStyle === "candles" ? candles : null;
