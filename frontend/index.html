@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=crypto-events-drawing-manager" />
+  <link rel="stylesheet" href="/style.css?v=live-market-alerts" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -82,8 +82,24 @@
             <option value="1d">1d</option>
           </select>
           <button id="btn-market-refresh" class="btn tiny">↻ Refresh market</button>
-          <span id="market-updated" class="muted small">Auto refresh: 10 seconds</span>
+          <span id="market-updated" class="muted small">Live price: every second · candles refresh each minute</span>
         </div>
+        <details id="price-alerts" class="price-alerts">
+          <summary>🔔 Price alerts <span id="price-alert-count" class="muted small"></span></summary>
+          <p class="muted small">Set alerts manually for the selected coin. Alerts run while this page is open.</p>
+          <form id="price-alert-form" class="price-alert-form">
+            <label class="sr-only" for="price-alert-condition">Alert condition</label>
+            <select id="price-alert-condition" class="market-select">
+              <option value="above">Reaches or goes above</option>
+              <option value="below">Reaches or goes below</option>
+            </select>
+            <label class="sr-only" for="price-alert-value">Target price in USDT</label>
+            <input id="price-alert-value" class="market-select" type="number" min="0" step="any" placeholder="Target price (USDT)" required />
+            <button class="btn tiny primary" type="submit">Add alert</button>
+          </form>
+          <div id="price-alert-list" class="price-alert-list" aria-live="polite"></div>
+          <div class="muted small">Browser notifications need permission. Alerts are saved in this browser.</div>
+        </details>
         <div class="indicator-controls">
           <div class="indicator-add-row">
             <label class="muted small" for="indicator-select">Indicators <span id="indicator-count"></span></label>
@@ -220,6 +236,6 @@
     <button type="button" role="menuitem" data-drawing-action="copy">Copy</button>
     <button type="button" role="menuitem" data-drawing-action="hide">Hide</button>
   </div>
-  <script src="/app.js?v=crypto-events-drawing-manager"></script>
+  <script src="/app.js?v=live-market-alerts"></script>
 </body>
 </html>

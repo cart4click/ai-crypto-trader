@@ -33,6 +33,17 @@ let activeIndicators = (() => {
 })();
 let marketRefreshInFlight = false;
 let forecastApiUnavailable = false;
+let marketStream = null;
+let marketStreamKey = "";
+let marketStreamReconnect = null;
+let pendingMarketKline = null;
+const PRICE_ALERTS_KEY = "market-price-alerts-v1";
+let priceAlerts = (() => {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PRICE_ALERTS_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter(alert => alert && typeof alert.id === "string" && typeof alert.symbol === "string" && ["above", "below"].includes(alert.condition) && Number.isFinite(alert.target)) : [];
+  } catch { return []; }
+})();
 
 // Function to clear cached token
 function clearToken() {
@@ -109,6 +120,65 @@ function renderDrawingManager() {
   }).join("");
 }
 renderDrawingManager();
+
+function savePriceAlerts() {
+  localStorage.setItem(PRICE_ALERTS_KEY, JSON.stringify(priceAlerts));
+  renderPriceAlerts();
+  if (selected) startMarketStream(selected, chartInterval);
+}
+
+function renderPriceAlerts() {
+  const list = $("#price-alert-list");
+  if (!list) return;
+  const visible = priceAlerts.filter(alert => alert.symbol === selected);
+  $("#price-alert-count").textContent = `(${visible.filter(alert => alert.active !== false).length} active)`;
+  list.innerHTML = visible.length ? visible.map(alert => `<div class="price-alert-row ${alert.active === false ? "triggered" : ""}" data-price-alert="${esc(alert.id)}">
+    <span><b>${alert.condition === "above" ? "At or above" : "At or below"}</b> ${fmtMarketPrice(alert.target)} ${alert.active === false ? "· triggered" : "· waiting"}</span>
+    <button class="btn tiny danger" type="button" data-remove-price-alert="${esc(alert.id)}">Remove</button>
+  </div>`).join("") : '<span class="muted small">No alerts for this coin. Add one above.</span>';
+}
+
+function checkPriceAlerts(symbol, price) {
+  if (!Number.isFinite(price)) return;
+  let changed = false;
+  for (const alert of priceAlerts) {
+    if (alert.symbol !== symbol || alert.active === false) continue;
+    const triggered = alert.condition === "above" ? price >= alert.target : price <= alert.target;
+    if (!triggered) continue;
+    alert.active = false;
+    alert.triggeredAt = new Date().toISOString();
+    changed = true;
+    const message = `${symbol} reached ${fmtMarketPrice(price)} (${alert.condition === "above" ? "target" : "downside"} alert ${fmtMarketPrice(alert.target)}).`;
+    toast(message);
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("AI Crypto Trader price alert", { body: message, icon: "/favicon.png" });
+    }
+  }
+  if (changed) savePriceAlerts();
+}
+
+$("#price-alert-form").addEventListener("submit", async event => {
+  event.preventDefault();
+  const target = Number($("#price-alert-value").value);
+  if (!selected || !Number.isFinite(target) || target <= 0) {
+    toast("Enter a target price greater than zero.", true);
+    return;
+  }
+  if (typeof Notification !== "undefined" && Notification.permission === "default") {
+    try { await Notification.requestPermission(); } catch { /* in-page alerts still work */ }
+  }
+  priceAlerts.unshift({ id: globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(16).slice(2)}`, symbol: selected, target, condition: $("#price-alert-condition").value, active: true, createdAt: new Date().toISOString() });
+  $("#price-alert-value").value = "";
+  savePriceAlerts();
+  toast(`Price alert added for ${selected}.`);
+});
+$("#price-alert-list").addEventListener("click", event => {
+  const button = event.target.closest("[data-remove-price-alert]");
+  if (!button) return;
+  priceAlerts = priceAlerts.filter(alert => alert.id !== button.dataset.removePriceAlert);
+  savePriceAlerts();
+});
+renderPriceAlerts();
 
 $("#drawing-manager-list").addEventListener("input", event => {
   const control = event.target;
@@ -553,6 +623,7 @@ async function refreshForecast(refreshExtras = true) {
     return;
   }
   const symbol = selected;
+  renderPriceAlerts();
   if (!chart) setChartMessage("Loading live market chart…");
   if (chartStyle === "candles" || chartInterval !== "1h") {
     try { await renderPublicMarketChart(symbol); }
@@ -936,14 +1007,21 @@ function renderChart(f) {
   applySavedChartViewport(cfg.options, selected);
   chartDrawings = loadChartDrawings(selected);
   updateHiddenDrawingButton();
-  if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
+  if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update("none"); }
   else chart = new Chart($("#chart"), cfg);
+  chart.$publicCandles = null;
   chart.$marketCandles = null;
+  chart.$historyCandleIndex = H - 1;
+  chart.$historyCandleOpenTime = Number(f.history_times?.at(-1));
+  chart.$historyIntervalMs = ({ "15m": 900000, "30m": 1800000, "1h": 3600000, "4h": 14400000, "1d": 86400000 })[chartInterval] || 3600000;
+  chart.$historyPreviousClose = f.history_closes.at(-2);
+  chart.$indicatorCandles = (f.history_closes || []).map(close => ({ close }));
   chart.$chartBounds = {
     xMin: 0, xMax: labels.length - 1,
     yMin: Math.min(...f.history_closes), yMax: Math.max(...f.history_closes),
   };
-  $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
+  $("#market-updated").textContent = `Live price: every second · candles refresh each minute`;
+  startMarketStream(selected, chartInterval);
   setChartMessage("");
 }
 
@@ -1398,17 +1476,138 @@ async function renderPublicMarketChart(symbol) {
   updateHiddenDrawingButton();
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
+  chart.$publicCandles = candles;
   chart.$marketCandles = chartStyle === "candles" ? candles : null;
   chart.$indicatorCandles = candles;
+  chart.$dashboardCandles = candleData;
+  chart.$isPublicMarket = true;
   chart.$chartBounds = {
     xMin: 0, xMax: candles.length - 1,
     yMin: Math.min(...candles.map(candle => candle.low), ...priceOverlays.flatMap(dataset => dataset.data).filter(Number.isFinite)),
     yMax: Math.max(...candles.map(candle => candle.high), ...priceOverlays.flatMap(dataset => dataset.data).filter(Number.isFinite)),
   };
-  chart.update();
-  $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
+  chart.update("none");
+  $("#market-updated").textContent = `Live price: every second · candles refresh each minute`;
+  startMarketStream(symbol, chartInterval);
   setChartMessage("");
 }
+
+const BINANCE_INTERVAL_MS = { "15m": 900000, "30m": 1800000, "1h": 3600000, "4h": 14400000, "1d": 86400000 };
+function startMarketStream(symbol, interval) {
+  if (!/^[A-Z0-9]{5,20}$/.test(symbol) || !CHART_INTERVALS.includes(interval)) return;
+  if (typeof WebSocket === "undefined") return;
+  const symbols = [...new Set([symbol, ...priceAlerts.filter(alert => alert.active !== false).map(alert => alert.symbol)])]
+    .filter(value => /^[A-Z0-9]{5,20}$/.test(value));
+  const key = `${symbols.slice().sort().join(",")}:${interval}`;
+  if (marketStreamKey === key && marketStream && marketStream.readyState <= WebSocket.OPEN) return;
+  marketStreamKey = key;
+  clearTimeout(marketStreamReconnect);
+  if (marketStream) marketStream.close();
+  try {
+    const streams = symbols.flatMap(value => [`${value.toLowerCase()}@trade`, `${value.toLowerCase()}@kline_${interval}`]).join("/");
+    marketStream = new WebSocket(`wss://stream.binance.com:9443/stream?streams=${streams}`);
+    $("#market-updated").textContent = "Connecting to Binance live market stream…";
+  } catch (error) {
+    console.warn("market stream:", error.message);
+    return;
+  }
+  marketStream.onopen = () => {
+    if (marketStreamKey === key) $("#market-updated").textContent = "Binance live stream connected · updating each second";
+  };
+  marketStream.onmessage = message => {
+    if (marketStreamKey !== key) return;
+    try {
+      const payload = JSON.parse(message.data);
+      const data = payload.data || payload;
+      if (data.e === "trade") {
+        const updateSymbol = data.s;
+        const price = Number(data.p);
+        checkPriceAlerts(updateSymbol, price);
+        if (updateSymbol === selected) pendingMarketKline = { symbol: updateSymbol, interval, time: Number(data.T), close: price, trade: true };
+        return;
+      }
+      const raw = data.k;
+      if (!raw) return;
+      const updateSymbol = data.s || raw.s || symbol;
+      const update = { symbol: updateSymbol, interval, time: Number(raw.t), open: Number(raw.o), high: Number(raw.h), low: Number(raw.l), close: Number(raw.c) };
+      checkPriceAlerts(updateSymbol, update.close);
+      if (updateSymbol === selected) pendingMarketKline = update;
+    } catch { /* Ignore malformed stream updates and retain the last good candle. */ }
+  };
+  marketStream.onerror = () => marketStream?.close();
+  marketStream.onclose = () => {
+    if (marketStreamKey !== key) return;
+    $("#market-updated").textContent = "Live stream disconnected · reconnecting…";
+    marketStreamReconnect = setTimeout(() => {
+      if (selected === symbol && chartInterval === interval) startMarketStream(symbol, interval);
+    }, 3000);
+  };
+}
+
+function applyLiveKline(update) {
+  if (update.symbol !== selected || update.interval !== chartInterval) return;
+  const { time, open, high, low, close } = update;
+  const priceElement = $("#sel-price");
+  const candles = chart?.$publicCandles;
+  let previousClose = chart?.$historyPreviousClose;
+  if (candles?.length) {
+    const candleTime = update.trade ? Math.floor(time / (BINANCE_INTERVAL_MS[chartInterval] || 3600000)) * (BINANCE_INTERVAL_MS[chartInterval] || 3600000) : time;
+    const last = candles.at(-1);
+    if (last.time === candleTime && update.trade) {
+      last.high = Math.max(last.high, close);
+      last.low = Math.min(last.low, close);
+      last.close = close;
+    } else if (last.time === candleTime) Object.assign(last, { open, high, low, close });
+    else if (candleTime > last.time) {
+      previousClose = last.close;
+      candles.push(update.trade ? { time: candleTime, open: close, high: close, low: close, close } : { time: candleTime, open, high, low, close });
+      if (candles.length > 168) candles.shift();
+    } else {
+      const found = candles.find(candle => candle.time === candleTime);
+      if (found && update.trade) {
+        found.high = Math.max(found.high, close);
+        found.low = Math.min(found.low, close);
+        found.close = close;
+      } else if (found) Object.assign(found, { open, high, low, close });
+    }
+    const labels = candles.map(candle => new Date(candle.time).toLocaleString("en-US", {
+      month: "short", day: "numeric", hour: "2-digit", minute: chartInterval.endsWith("m") ? "2-digit" : undefined,
+    }));
+    const closes = candles.map(candle => candle.close);
+    const overlays = buildPriceIndicatorOverlays(candles, closes);
+    if (chart) {
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = closes;
+      chart.data.datasets[0].borderColor = chartStyle === "candles" ? "transparent" : "#3b82f6";
+      chart.data.datasets.splice(1, chart.data.datasets.length - 1, ...overlays);
+      chart.$marketCandles = chartStyle === "candles" ? candles : null;
+      chart.$indicatorCandles = candles;
+      chart.$chartBounds = { xMin: 0, xMax: candles.length - 1, yMin: Math.min(...candles.map(candle => candle.low)), yMax: Math.max(...candles.map(candle => candle.high)) };
+      chart.update("none");
+    }
+    renderIndicatorReadouts(candles);
+    if (activeIndicators.includes("supertrend") && chart?.$dashboardCandles) refreshSupertrendDashboard(update.symbol, chart.$dashboardCandles);
+    previousClose = candles.length > 1 ? candles.at(-2).close : previousClose;
+  } else if (chart && Number.isFinite(chart.$historyCandleIndex)) {
+    const historyIndex = chart.$historyCandleIndex;
+    if (Math.abs(time - chart.$historyCandleOpenTime) <= (BINANCE_INTERVAL_MS[chartInterval] || 3600000)) {
+      chart.data.datasets[0].data[historyIndex] = close;
+      if (chart.$indicatorCandles?.[historyIndex]) chart.$indicatorCandles[historyIndex].close = close;
+      chart.update("none");
+      renderIndicatorReadouts(chart.$indicatorCandles || []);
+    }
+  }
+  const changePct = previousClose ? (close / previousClose - 1) * 100 : 0;
+  if (priceElement) priceElement.innerHTML = `${fmtMarketPrice(close)} <span class="${cls(changePct)}" style="font-size:14px">${fmtPct(changePct)} ${chartInterval}</span>`;
+  $("#market-updated").textContent = `Live price updated ${new Date().toLocaleTimeString()} · candle stream`;
+}
+
+setInterval(() => {
+  if (!pendingMarketKline) return;
+  const update = pendingMarketKline;
+  pendingMarketKline = null;
+  applyLiveKline(update);
+}, 1000);
 
 function setChartMessage(message) {
   const box = $("#chart-message");
@@ -1754,7 +1953,7 @@ async function refreshMarket(force = false) {
   if (button) { button.disabled = true; button.textContent = "↻ Refreshing…"; }
   try {
     await Promise.allSettled([refreshCoins(force), selected ? refreshForecast(false) : Promise.resolve()]);
-    if (!chart) $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
+    if (!chart) $("#market-updated").textContent = "Connecting to the live market stream…";
   } finally {
     marketRefreshInFlight = false;
     if (button) { button.disabled = false; button.textContent = "↻ Refresh market"; }
@@ -1893,7 +2092,7 @@ $("#btn-events-refresh").addEventListener("click", refreshCryptoEvents);
 refreshStatus(); refreshMarket(); refreshNews(); refreshPending(); refreshTrades(); refreshWallet();
 refreshCryptoEvents();
 setInterval(refreshStatus, 10000);
-setInterval(() => refreshMarket(), 10000);
+setInterval(() => refreshMarket(), 60 * 1000);
 setInterval(refreshNews, 10 * 60 * 1000);
 setInterval(refreshPending, 8000);
 setInterval(refreshTrades, 10000);
