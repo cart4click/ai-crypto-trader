@@ -10,6 +10,11 @@ let chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "can
 const CHART_INTERVALS = ["15m", "30m", "1h", "4h", "1d"];
 let chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval"))
   ? localStorage.getItem("market-chart-interval") : "1h";
+const CHART_VIEW_STORAGE_KEY = "market-chart-viewport";
+let chartViewport = (() => {
+  try { return JSON.parse(localStorage.getItem(CHART_VIEW_STORAGE_KEY) || "null"); }
+  catch { return null; }
+})();
 const INDICATOR_OPTIONS = {
   supertrend: "Multi-timeframe Supertrend",
   rsi: "Relative Strength Index (RSI)",
@@ -70,6 +75,18 @@ function loadChartDrawings(symbol) {
 
 function saveChartDrawings() {
   if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+}
+
+function chartViewportKey(symbol = selected) { return `${symbol}:${chartInterval}`; }
+
+function applySavedChartViewport(options, symbol = selected) {
+  if (chartViewport?.key !== chartViewportKey(symbol)) return;
+  const { xMin, xMax, yMin, yMax } = chartViewport;
+  if (![xMin, xMax, yMin, yMax].every(Number.isFinite)) return;
+  options.scales.x.min = xMin;
+  options.scales.x.max = xMax;
+  options.scales.y.min = yMin;
+  options.scales.y.max = yMax;
 }
 
 // Keep only the requested compact shortcuts; users can search for any other market below.
@@ -764,10 +781,15 @@ function renderChart(f) {
       },
     },
   };
+  applySavedChartViewport(cfg.options, selected);
   chartDrawings = loadChartDrawings(selected);
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; chart.update(); }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = null;
+  chart.$chartBounds = {
+    xMin: 0, xMax: labels.length - 1,
+    yMin: Math.min(...f.history_closes), yMax: Math.max(...f.history_closes),
+  };
   $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
   setChartMessage("");
 }
@@ -837,6 +859,118 @@ const chartDrawingOverlay = {
   },
 };
 if (window.Chart) Chart.register(candlestickOverlay, chartDrawingOverlay);
+
+function saveChartViewport() {
+  if (!chart?.scales?.x || !chart?.scales?.y) return;
+  chartViewport = {
+    key: chartViewportKey(),
+    xMin: chart.scales.x.min, xMax: chart.scales.x.max,
+    yMin: chart.scales.y.min, yMax: chart.scales.y.max,
+  };
+  localStorage.setItem(CHART_VIEW_STORAGE_KEY, JSON.stringify(chartViewport));
+}
+
+function panChartByPixels(dx, dy, persist = true) {
+  if (!chart?.chartArea || !chart.scales?.x || !chart.scales?.y) return;
+  const x = chart.scales.x;
+  const y = chart.scales.y;
+  const xRange = x.max - x.min;
+  const yRange = y.max - y.min;
+  const bounds = chart.$chartBounds || { xMin: 0, xMax: chart.data.labels.length - 1 };
+  let xMin = x.min - dx / chart.chartArea.width * xRange;
+  let xMax = xMin + xRange;
+  if (Number.isFinite(bounds.xMin) && Number.isFinite(bounds.xMax)) {
+    xMin = Math.max(bounds.xMin, Math.min(xMin, bounds.xMax - xRange));
+    xMax = xMin + xRange;
+  }
+  const yShift = dy / chart.chartArea.height * yRange;
+  chart.options.scales.x.min = xMin;
+  chart.options.scales.x.max = xMax;
+  chart.options.scales.y.min = y.min + yShift;
+  chart.options.scales.y.max = y.max + yShift;
+  chart.update("none");
+  if (persist) saveChartViewport();
+}
+
+function zoomChart(direction) {
+  if (!chart?.scales?.x || !chart.scales?.y) return;
+  const x = chart.scales.x;
+  const y = chart.scales.y;
+  const bounds = chart.$chartBounds || {};
+  const xBaseRange = Math.max(1, (bounds.xMax ?? x.max) - (bounds.xMin ?? x.min));
+  const yBaseRange = Math.max(Number.EPSILON, (bounds.yMax ?? y.max) - (bounds.yMin ?? y.min));
+  const factor = direction === "in" ? 0.8 : 1.25;
+  const xRange = Math.min(xBaseRange, Math.max(Math.min(6, xBaseRange), (x.max - x.min) * factor));
+  const yRange = Math.min(yBaseRange * 5, Math.max(yBaseRange * 0.01, (y.max - y.min) * factor));
+  const xCenter = (x.min + x.max) / 2;
+  const yCenter = (y.min + y.max) / 2;
+  let xMin = xCenter - xRange / 2;
+  if (Number.isFinite(bounds.xMin) && Number.isFinite(bounds.xMax)) {
+    xMin = Math.max(bounds.xMin, Math.min(xMin, bounds.xMax - xRange));
+  }
+  chart.options.scales.x.min = xMin;
+  chart.options.scales.x.max = xMin + xRange;
+  chart.options.scales.y.min = yCenter - yRange / 2;
+  chart.options.scales.y.max = yCenter + yRange / 2;
+  chart.update("none");
+  saveChartViewport();
+}
+
+function resetChartViewport() {
+  chartViewport = null;
+  localStorage.removeItem(CHART_VIEW_STORAGE_KEY);
+  if (!chart) return;
+  for (const axis of ["x", "y"]) {
+    delete chart.options.scales[axis].min;
+    delete chart.options.scales[axis].max;
+  }
+  chart.update("none");
+}
+
+document.querySelector(".chart-navigation-tools").addEventListener("click", event => {
+  const button = event.target.closest("[data-chart-nav]");
+  if (!button) return;
+  const action = button.dataset.chartNav;
+  if (action === "reset") { resetChartViewport(); return; }
+  if (action === "zoom-in" || action === "zoom-out") {
+    zoomChart(action === "zoom-in" ? "in" : "out");
+    return;
+  }
+  if (!chart?.chartArea) return;
+  const { width, height } = chart.chartArea;
+  const panDistance = 0.15;
+  const offsets = {
+    left: [-width * panDistance, 0], right: [width * panDistance, 0],
+    up: [0, -height * panDistance], down: [0, height * panDistance],
+  }[action];
+  if (offsets) panChartByPixels(...offsets);
+});
+
+let chartDrag = null;
+$("#chart").addEventListener("pointerdown", event => {
+  if (drawingTool || !chart?.chartArea || event.pointerType !== "mouse" || event.button !== 0) return;
+  const rect = event.currentTarget.getBoundingClientRect();
+  const x = (event.clientX - rect.left) * (chart.width / rect.width);
+  const y = (event.clientY - rect.top) * (chart.height / rect.height);
+  const area = chart.chartArea;
+  if (x < area.left || x > area.right || y < area.top || y > area.bottom) return;
+  chartDrag = { x: event.clientX, y: event.clientY, pointerId: event.pointerId };
+  event.currentTarget.setPointerCapture(event.pointerId);
+});
+$("#chart").addEventListener("pointermove", event => {
+  if (!chartDrag || event.pointerId !== chartDrag.pointerId) return;
+  const dx = event.clientX - chartDrag.x;
+  const dy = event.clientY - chartDrag.y;
+  chartDrag.x = event.clientX;
+  chartDrag.y = event.clientY;
+  panChartByPixels(dx, dy, false);
+});
+$("#chart").addEventListener("pointerup", event => {
+  if (!chartDrag || event.pointerId !== chartDrag.pointerId) return;
+  chartDrag = null;
+  saveChartViewport();
+});
+$("#chart").addEventListener("pointercancel", () => { chartDrag = null; });
 
 function setDrawingTool(tool) {
   drawingTool = drawingTool === tool ? null : tool;
@@ -922,11 +1056,17 @@ async function renderPublicMarketChart(symbol) {
       },
     },
   };
+  applySavedChartViewport(cfg.options, symbol);
   chartDrawings = loadChartDrawings(symbol);
   if (chart) { chart.data = cfg.data; chart.options = cfg.options; }
   else chart = new Chart($("#chart"), cfg);
   chart.$marketCandles = chartStyle === "candles" ? candles : null;
   chart.$indicatorCandles = candles;
+  chart.$chartBounds = {
+    xMin: 0, xMax: candles.length - 1,
+    yMin: Math.min(...candles.map(candle => candle.low)),
+    yMax: Math.max(...candles.map(candle => candle.high)),
+  };
   chart.update();
   $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
   setChartMessage("");

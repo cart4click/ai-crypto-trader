@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=mobile-dashboard-layout" />
+  <link rel="stylesheet" href="/style.css?v=chart-navigation-tools" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -101,6 +101,18 @@
           <div id="indicator-readouts" class="indicator-readouts" aria-live="polite"></div>
         </div>
         <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
+        <div class="chart-navigation-tools" role="toolbar" aria-label="Chart zoom and pan controls">
+          <span class="drawing-label">View</span>
+          <button class="btn tiny" type="button" data-chart-nav="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+          <button class="btn tiny" type="button" data-chart-nav="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+          <span class="chart-nav-divider" aria-hidden="true"></span>
+          <button class="btn tiny" type="button" data-chart-nav="left" title="Pan left" aria-label="Pan chart left">←</button>
+          <button class="btn tiny" type="button" data-chart-nav="right" title="Pan right" aria-label="Pan chart right">→</button>
+          <button class="btn tiny" type="button" data-chart-nav="up" title="Pan up" aria-label="Pan chart up">↑</button>
+          <button class="btn tiny" type="button" data-chart-nav="down" title="Pan down" aria-label="Pan chart down">↓</button>
+          <button class="btn tiny" type="button" data-chart-nav="reset" title="Reset chart view" aria-label="Reset chart view">Reset</button>
+          <span class="muted small chart-nav-hint">Drag the chart to pan</span>
+        </div>
         <div class="chart-drawing-tools" role="toolbar" aria-label="Chart drawing tools">
           <span class="drawing-label">Draw</span>
           <button class="btn tiny" type="button" data-draw-tool="horizontal" aria-pressed="false">━ Horizontal</button>
@@ -177,6 +189,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=email-only-login"></script>
+  <script src="/app.js?v=chart-navigation-tools"></script>
 </body>
 </html>
