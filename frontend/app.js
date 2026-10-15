@@ -1994,110 +1994,13 @@ $("#chart-interval").addEventListener("change", (event) => {
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));
 
-/* ----------------------------------------------------------- crypto events */
-function buildCryptoEventCard(event) {
-  const card = document.createElement("article");
-  card.className = "crypto-event";
-  const head = document.createElement("div");
-  head.className = "crypto-event-head";
-  const date = document.createElement("span");
-  date.className = "crypto-event-date";
-  date.textContent = (event.displayed_date || "Date to be confirmed") + (event.estimated ? " · estimated" : "");
-  const tags = document.createElement("div");
-  tags.className = "crypto-event-tags";
-  for (const label of [event.category, ...(Array.isArray(event.coins) ? event.coins : [])].filter(Boolean)) {
-    const tag = document.createElement("span");
-    tag.className = "crypto-event-tag";
-    tag.textContent = label;
-    tags.append(tag);
-  }
-  if (event.impact !== null && event.impact !== undefined && String(event.impact).trim()) {
-    const tag = document.createElement("span");
-    tag.className = "crypto-event-tag";
-    tag.textContent = "Impact " + String(event.impact);
-    tags.append(tag);
-  }
-  head.append(date, tags);
-  const title = document.createElement("a");
-  title.className = "crypto-event-title";
-  title.href = /^https:\/\/coinmarketcal\.com\//i.test(event.url || "") ? event.url : "https://coinmarketcal.com/";
-  title.target = "_blank";
-  title.rel = "noopener noreferrer";
-  title.textContent = event.title || "Crypto event";
-  card.append(head, title);
-  if (event.description) {
-    const description = document.createElement("p");
-    description.className = "crypto-event-description";
-    description.textContent = event.description;
-    card.append(description);
-  }
-  if (/^https:\/\//i.test(event.source_url || "")) {
-    const source = document.createElement("a");
-    source.className = "crypto-event-source";
-    source.href = event.source_url;
-    source.target = "_blank";
-    source.rel = "noopener noreferrer";
-    source.textContent = "Original announcement ↗";
-    card.append(source);
-  }
-  return card;
-}
-
-async function refreshCryptoEvents() {
-  const button = $("#btn-events-refresh");
-  const status = $("#crypto-events-status");
-  const list = $("#crypto-events-list");
-  button.disabled = true;
-  status.hidden = false;
-  status.textContent = "Refreshing upcoming crypto events…";
-  list.replaceChildren();
-  try {
-    const response = await fetch("/events.json?refresh=" + Date.now(), { cache: "no-store" });
-    if (!response.ok) throw new Error("Feed returned HTTP " + response.status);
-    const feed = await response.json();
-    if (feed.status === "not_configured") {
-      status.textContent = "";
-      const message = document.createTextNode("Live events need a CoinMarketCal API key stored as the GitHub Actions secret COINMARKETCAL_API_KEY. The key must stay server-side. ");
-      const link = document.createElement("a");
-      link.href = "https://coinmarketcal.com/developer";
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.textContent = "Get an API key";
-      status.append(message, link, document.createTextNode("."));
-      return;
-    }
-    if (feed.status !== "ok") {
-      status.textContent = feed.message || "Crypto events are temporarily unavailable. Try again later.";
-      return;
-    }
-    const events = Array.isArray(feed.events) ? feed.events : [];
-    if (!events.length) {
-      status.textContent = "No upcoming Bitcoin, Ethereum, or Solana events right now.";
-      return;
-    }
-    list.replaceChildren(...events.map(buildCryptoEventCard));
-    const updated = feed.updated_at ? new Date(feed.updated_at) : null;
-    status.textContent = updated && Number.isFinite(updated.getTime())
-      ? "Showing " + events.length + " upcoming events · feed updated " + updated.toLocaleString() + "."
-      : "Showing " + events.length + " upcoming events.";
-  } catch (error) {
-    status.textContent = "Upcoming crypto events could not be loaded. Try refreshing in a little while.";
-    console.warn("crypto events feed:", error.message);
-  } finally {
-    button.disabled = false;
-  }
-}
-$("#btn-events-refresh").addEventListener("click", refreshCryptoEvents);
-
 refreshStatus(); refreshMarket(); refreshNews(); refreshPending(); refreshTrades(); refreshWallet();
-refreshCryptoEvents();
 setInterval(refreshStatus, 10000);
 setInterval(() => refreshMarket(), 60 * 1000);
 setInterval(refreshNews, 10 * 60 * 1000);
 setInterval(refreshPending, 8000);
 setInterval(refreshTrades, 10000);
 setInterval(refreshWallet, 10000);
-setInterval(refreshCryptoEvents, 30 * 60 * 1000);
 
 /* --------------------------------------------------------------------- chat */
 const chatWidget = document.getElementById('chat-widget');

@@ -131,16 +131,11 @@ and email sign-in require a separate server running `run.py`.
    custom domain. In IONOS, keep the domain's DNS pointed at GitHub Pages; the
    certificate and HTTP-to-HTTPS redirect are managed by GitHub Pages.
 
-### Upcoming crypto events feed
+### Upcoming crypto events
 
-The Pages workflow refreshes the public BTC, ETH, and SOL event snapshot every
-six hours from CoinMarketCal. To enable it, create a CoinMarketCal API key and
-add it in **GitHub → Settings → Secrets and variables → Actions** as
-`COINMARKETCAL_API_KEY`. Never add the key to `frontend/` or commit it. After
-adding the secret, run **Actions → Deploy Pages → Run workflow** once; the
-workflow also refreshes the feed on its six-hour schedule. Without this secret,
-the website shows setup instructions in the events panel instead of an empty
-or misleading event list.
+The dashboard links directly to the public event calendars at CoinMarketCap
+and CoinMarketCal. Visitors can browse current events on those sites; no API
+key or account is required by this dashboard.
 
 ### Email sign-in setup
 

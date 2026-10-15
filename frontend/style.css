@@ -151,19 +151,6 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .crypto-events-link > span:last-child { color: #93c5fd; font-size: 17px; }
 .market-events-attribution { line-height: 1.4; margin: 10px 0 0; }
 .news-empty-state { border: 1px dashed var(--border); border-radius: 8px; padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
-.crypto-events-list { display: grid; gap: 7px; max-height: 460px; overflow: auto; }
-.crypto-event { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); }
-.crypto-event-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
-.crypto-event-date { color: #93c5fd; font-size: 10px; font-weight: 700; }
-.crypto-event-tags { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
-.crypto-event-tag { padding: 2px 5px; border-radius: 4px; background: rgba(59,130,246,.13); color: #bfdbfe; font-size: 9px; font-weight: 650; }
-.crypto-event-title { color: var(--text); font-size: 12px; line-height: 1.4; font-weight: 650; text-decoration: none; }
-.crypto-event-title:hover, .crypto-events-footer a:hover { color: var(--blue); }
-.crypto-event-description { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
-.crypto-event-source { display: inline-block; margin-top: 5px; color: #93c5fd; font-size: 10px; text-decoration: none; }
-.crypto-events-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; }
-.crypto-events-footer .btn { margin-top: 0; }
-.crypto-events-footer a { color: #93c5fd; text-decoration: none; }
 
 /* coins */
 .add-coin { display: flex; gap: 8px; margin-bottom: 8px; }

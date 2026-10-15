@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=live-market-alerts" />
+  <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -186,13 +186,16 @@
       </div>
       <div class="card">
         <h3>🪙 Upcoming crypto events</h3>
-        <p class="muted small market-events-note">Upcoming Bitcoin, Ethereum, and Solana events, refreshed from CoinMarketCal.</p>
-        <div id="crypto-events-status" class="news-empty-state" role="status" aria-live="polite">Loading upcoming events…</div>
-        <div id="crypto-events-list" class="crypto-events-list"></div>
-        <div class="crypto-events-footer">
-          <button id="btn-events-refresh" class="btn tiny" type="button">↻ Refresh events</button>
-          <span class="muted small">Source: <a href="https://coinmarketcal.com/" target="_blank" rel="noopener noreferrer">CoinMarketCal</a></span>
+        <p class="muted small market-events-note">Browse upcoming crypto events by coin, date, and category. No API key is needed.</p>
+        <div class="crypto-events-sources">
+          <a class="crypto-events-link" href="https://coinmarketcap.com/events/" target="_blank" rel="noopener noreferrer">
+            <span><strong>CoinMarketCap</strong><small>Public crypto events calendar</small></span><span aria-hidden="true">↗</span>
+          </a>
+          <a class="crypto-events-link" href="https://coinmarketcal.com/" target="_blank" rel="noopener noreferrer">
+            <span><strong>CoinMarketCal</strong><small>Crypto milestones and catalysts</small></span><span aria-hidden="true">↗</span>
+          </a>
         </div>
+        <p class="muted small market-events-attribution">Events open on their source website, where you can check details and announcements.</p>
       </div>
       <div class="card">
         <h3>📰 News &amp; AI analysis</h3>
@@ -236,6 +239,6 @@
     <button type="button" role="menuitem" data-drawing-action="copy">Copy</button>
     <button type="button" role="menuitem" data-drawing-action="hide">Hide</button>
   </div>
-  <script src="/app.js?v=live-market-alerts"></script>
+  <script src="/app.js?v=public-crypto-calendars"></script>
 </body>
 </html>
