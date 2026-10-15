@@ -141,11 +141,15 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .asset-news-summary b { color: var(--text); font-weight: 600; }
 .news-source-note { margin: 7px 0; line-height: 1.4; }
 .indicator-display-note { margin-top: 5px; line-height: 1.4; }
-.market-events-note { line-height: 1.4; margin: -3px 0 8px; }
-.market-events-widget { width: 100%; height: 420px; }
-.market-events-widget .tradingview-widget-container__widget { width: 100%; height: calc(100% - 32px); }
-.market-events-widget .tradingview-widget-copyright { text-align: right; font-size: 10px; line-height: 24px; }
-.market-events-widget .tradingview-widget-copyright a { color: #93c5fd; text-decoration: none; }
+.market-events-note { line-height: 1.45; margin: -3px 0 12px; }
+.crypto-events-sources { display: grid; gap: 8px; }
+.crypto-events-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--card2); color: var(--text); text-decoration: none; transition: border-color .15s ease, background .15s ease; }
+.crypto-events-link:hover { border-color: var(--blue); background: rgba(59,130,246,.08); }
+.crypto-events-link strong, .crypto-events-link small { display: block; }
+.crypto-events-link strong { font-size: 13px; }
+.crypto-events-link small { margin-top: 3px; color: var(--muted); font-size: 11px; }
+.crypto-events-link > span:last-child { color: #93c5fd; font-size: 17px; }
+.market-events-attribution { line-height: 1.4; margin: 10px 0 0; }
 
 /* coins */
 .add-coin { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -674,7 +678,6 @@ width: 42px;
   .chat-widget.expanded .chat-body { height: min(400px, calc(70vh - 60px)); }
   .chat-input { padding: 10px; }
   .chat-messages { padding: 12px; }
-  .market-events-widget { height: 420px; }
 }
 
 @media (max-width: 360px) {
