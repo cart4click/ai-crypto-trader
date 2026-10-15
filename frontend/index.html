@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=drawing-context-actions" />
+  <link rel="stylesheet" href="/style.css?v=crypto-events-drawing-manager" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -126,6 +126,10 @@
           <button id="btn-clear-drawings" class="btn tiny" type="button">Clear drawings</button>
           <span id="drawing-status" class="muted small">Choose a tool, then draw or click the chart.</span>
         </div>
+        <details id="drawing-manager" class="drawing-manager">
+          <summary>Drawing manager <span id="drawing-manager-count" class="muted small"></span></summary>
+          <div id="drawing-manager-list"><div class="muted small">No chart drawings yet.</div></div>
+        </details>
         <div class="chart-wrap">
           <canvas id="chart" aria-label="Price history and forecast chart"></canvas>
           <div id="chart-message" class="chart-message">Add a coin to load its live market chart.</div>
@@ -166,16 +170,13 @@
       </div>
       <div class="card">
         <h3>🪙 Upcoming crypto events</h3>
-        <p class="muted small market-events-note">Live event listings open at their source sites; this dashboard does not yet embed an event feed. Choose a source below to see upcoming crypto events.</p>
-        <div class="crypto-events-sources">
-          <a class="crypto-events-link" href="https://coinmarketcap.com/events/" target="_blank" rel="noopener noreferrer">
-            <span><strong>CoinMarketCap</strong><small>Crypto events calendar</small></span><span aria-hidden="true">↗</span>
-          </a>
-          <a class="crypto-events-link" href="https://coinmarketcal.com/" target="_blank" rel="noopener noreferrer">
-            <span><strong>CoinMarketCal</strong><small>Verified crypto catalysts</small></span><span aria-hidden="true">↗</span>
-          </a>
+        <p class="muted small market-events-note">Upcoming Bitcoin, Ethereum, and Solana events, refreshed from CoinMarketCal.</p>
+        <div id="crypto-events-status" class="news-empty-state" role="status" aria-live="polite">Loading upcoming events…</div>
+        <div id="crypto-events-list" class="crypto-events-list"></div>
+        <div class="crypto-events-footer">
+          <button id="btn-events-refresh" class="btn tiny" type="button">↻ Refresh events</button>
+          <span class="muted small">Source: <a href="https://coinmarketcal.com/" target="_blank" rel="noopener noreferrer">CoinMarketCal</a></span>
         </div>
-        <p class="muted small market-events-attribution">If there are no upcoming entries, the selected source will say so. These calendars track crypto events, not national economic releases.</p>
       </div>
       <div class="card">
         <h3>📰 News &amp; AI analysis</h3>
@@ -219,6 +220,6 @@
     <button type="button" role="menuitem" data-drawing-action="copy">Copy</button>
     <button type="button" role="menuitem" data-drawing-action="hide">Hide</button>
   </div>
-  <script src="/app.js?v=drawing-context-actions"></script>
+  <script src="/app.js?v=crypto-events-drawing-manager"></script>
 </body>
 </html>

@@ -77,7 +77,63 @@ function loadChartDrawings(symbol) {
 
 function saveChartDrawings() {
   if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+  renderDrawingManager();
 }
+
+function drawingTitle(drawing, index) {
+  if (drawing.label?.trim()) return drawing.label.trim();
+  if (drawing.type === "text") return drawing.text || `Text ${index + 1}`;
+  const types = { horizontal: "Horizontal line", vertical: "Vertical line", freehand: "Freehand" };
+  const typeName = types[drawing.type] || "Drawing";
+  const ordinal = chartDrawings.slice(0, index + 1).filter(item => item.type === drawing.type).length;
+  return `${typeName} ${ordinal}`;
+}
+
+function renderDrawingManager() {
+  const list = $("#drawing-manager-list");
+  if (!list) return;
+  const count = $("#drawing-manager-count");
+  if (count) count.textContent = `(${chartDrawings.length})`;
+  if (!chartDrawings.length) {
+    list.innerHTML = '<div class="muted small">No chart drawings yet.</div>';
+    return;
+  }
+  list.innerHTML = chartDrawings.map((drawing, index) => {
+    const color = /^#[0-9a-f]{6}$/i.test(drawing.color || "") ? drawing.color : "#fbbf24";
+    return `<div class="drawing-manager-row ${drawing.hidden ? "is-hidden" : ""}" data-drawing-index="${index}">
+      <input class="drawing-manager-color" data-drawing-color="${index}" type="color" value="${color}" aria-label="Color for ${esc(drawingTitle(drawing, index))}" />
+      <input class="drawing-manager-name" data-drawing-label="${index}" type="text" maxlength="48" value="${esc(drawingTitle(drawing, index))}" aria-label="Rename drawing ${index + 1}" />
+      <button class="btn tiny" type="button" data-drawing-manager-action="toggle" aria-label="${drawing.hidden ? "Show" : "Hide"} ${esc(drawingTitle(drawing, index))}">${drawing.hidden ? "Show" : "Hide"}</button>
+      <button class="btn tiny danger" type="button" data-drawing-manager-action="delete" aria-label="Delete ${esc(drawingTitle(drawing, index))}">Delete</button>
+    </div>`;
+  }).join("");
+}
+renderDrawingManager();
+
+$("#drawing-manager-list").addEventListener("input", event => {
+  const control = event.target;
+  const index = Number(control.dataset.drawingLabel ?? control.dataset.drawingColor);
+  const drawing = chartDrawings[index];
+  if (!drawing) return;
+  if (control.matches("[data-drawing-label]")) drawing.label = control.value.slice(0, 48);
+  if (control.matches("[data-drawing-color]")) {
+    drawing.color = /^#[0-9a-f]{6}$/i.test(control.value) ? control.value : "#fbbf24";
+    if (chart) chart.update("none");
+  }
+  if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+});
+$("#drawing-manager-list").addEventListener("click", event => {
+  const button = event.target.closest("[data-drawing-manager-action]");
+  if (!button) return;
+  const row = button.closest("[data-drawing-index]");
+  const drawing = chartDrawings[Number(row?.dataset.drawingIndex)];
+  if (!drawing) return;
+  if (button.dataset.drawingManagerAction === "toggle") drawing.hidden = !drawing.hidden;
+  if (button.dataset.drawingManagerAction === "delete") chartDrawings.splice(Number(row.dataset.drawingIndex), 1);
+  saveChartDrawings();
+  if (chart) chart.update("none");
+  updateHiddenDrawingButton();
+});
 
 function marketNotesKey(symbol = selected) { return `market-notes:${symbol}`; }
 function renderMarketNotes() {
@@ -935,6 +991,9 @@ const chartDrawingOverlay = {
     ctx.setLineDash([5, 4]);
     chartDrawings.forEach(line => {
       if (line.hidden) return;
+      const lineColor = /^#[0-9a-f]{6}$/i.test(line.color || "") ? line.color : "#fbbf24";
+      ctx.strokeStyle = lineColor;
+      ctx.fillStyle = lineColor;
       ctx.beginPath();
       if (line.type === "horizontal") {
         const pixel = y.getPixelForValue(line.price);
@@ -1258,6 +1317,7 @@ $("#drawing-context-menu").addEventListener("click", event => {
   if (action === "copy") {
     const copy = JSON.parse(JSON.stringify(drawing));
     delete copy.hidden;
+    copy.label = `${drawingTitle(drawing, contextDrawingIndex)} copy`.slice(0, 48);
     const yRange = chart?.scales?.y ? chart.scales.y.max - chart.scales.y.min : 0;
     const priceNudge = Number.isFinite(yRange) ? yRange * 0.015 : 0;
     if (copy.type === "horizontal") copy.price += priceNudge;
@@ -1735,13 +1795,110 @@ $("#chart-interval").addEventListener("change", (event) => {
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));
 
+/* ----------------------------------------------------------- crypto events */
+function buildCryptoEventCard(event) {
+  const card = document.createElement("article");
+  card.className = "crypto-event";
+  const head = document.createElement("div");
+  head.className = "crypto-event-head";
+  const date = document.createElement("span");
+  date.className = "crypto-event-date";
+  date.textContent = (event.displayed_date || "Date to be confirmed") + (event.estimated ? " · estimated" : "");
+  const tags = document.createElement("div");
+  tags.className = "crypto-event-tags";
+  for (const label of [event.category, ...(Array.isArray(event.coins) ? event.coins : [])].filter(Boolean)) {
+    const tag = document.createElement("span");
+    tag.className = "crypto-event-tag";
+    tag.textContent = label;
+    tags.append(tag);
+  }
+  if (event.impact !== null && event.impact !== undefined && String(event.impact).trim()) {
+    const tag = document.createElement("span");
+    tag.className = "crypto-event-tag";
+    tag.textContent = "Impact " + String(event.impact);
+    tags.append(tag);
+  }
+  head.append(date, tags);
+  const title = document.createElement("a");
+  title.className = "crypto-event-title";
+  title.href = /^https:\/\/coinmarketcal\.com\//i.test(event.url || "") ? event.url : "https://coinmarketcal.com/";
+  title.target = "_blank";
+  title.rel = "noopener noreferrer";
+  title.textContent = event.title || "Crypto event";
+  card.append(head, title);
+  if (event.description) {
+    const description = document.createElement("p");
+    description.className = "crypto-event-description";
+    description.textContent = event.description;
+    card.append(description);
+  }
+  if (/^https:\/\//i.test(event.source_url || "")) {
+    const source = document.createElement("a");
+    source.className = "crypto-event-source";
+    source.href = event.source_url;
+    source.target = "_blank";
+    source.rel = "noopener noreferrer";
+    source.textContent = "Original announcement ↗";
+    card.append(source);
+  }
+  return card;
+}
+
+async function refreshCryptoEvents() {
+  const button = $("#btn-events-refresh");
+  const status = $("#crypto-events-status");
+  const list = $("#crypto-events-list");
+  button.disabled = true;
+  status.hidden = false;
+  status.textContent = "Refreshing upcoming crypto events…";
+  list.replaceChildren();
+  try {
+    const response = await fetch("/events.json?refresh=" + Date.now(), { cache: "no-store" });
+    if (!response.ok) throw new Error("Feed returned HTTP " + response.status);
+    const feed = await response.json();
+    if (feed.status === "not_configured") {
+      status.textContent = "";
+      const message = document.createTextNode("Live events need a CoinMarketCal API key stored as the GitHub Actions secret COINMARKETCAL_API_KEY. The key must stay server-side. ");
+      const link = document.createElement("a");
+      link.href = "https://coinmarketcal.com/developer";
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.textContent = "Get an API key";
+      status.append(message, link, document.createTextNode("."));
+      return;
+    }
+    if (feed.status !== "ok") {
+      status.textContent = feed.message || "Crypto events are temporarily unavailable. Try again later.";
+      return;
+    }
+    const events = Array.isArray(feed.events) ? feed.events : [];
+    if (!events.length) {
+      status.textContent = "No upcoming Bitcoin, Ethereum, or Solana events right now.";
+      return;
+    }
+    list.replaceChildren(...events.map(buildCryptoEventCard));
+    const updated = feed.updated_at ? new Date(feed.updated_at) : null;
+    status.textContent = updated && Number.isFinite(updated.getTime())
+      ? "Showing " + events.length + " upcoming events · feed updated " + updated.toLocaleString() + "."
+      : "Showing " + events.length + " upcoming events.";
+  } catch (error) {
+    status.textContent = "Upcoming crypto events could not be loaded. Try refreshing in a little while.";
+    console.warn("crypto events feed:", error.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+$("#btn-events-refresh").addEventListener("click", refreshCryptoEvents);
+
 refreshStatus(); refreshMarket(); refreshNews(); refreshPending(); refreshTrades(); refreshWallet();
+refreshCryptoEvents();
 setInterval(refreshStatus, 10000);
 setInterval(() => refreshMarket(), 10000);
 setInterval(refreshNews, 10 * 60 * 1000);
 setInterval(refreshPending, 8000);
 setInterval(refreshTrades, 10000);
 setInterval(refreshWallet, 10000);
+setInterval(refreshCryptoEvents, 30 * 60 * 1000);
 
 /* --------------------------------------------------------------------- chat */
 const chatWidget = document.getElementById('chat-widget');

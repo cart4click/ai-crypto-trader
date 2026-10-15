@@ -151,6 +151,19 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .crypto-events-link > span:last-child { color: #93c5fd; font-size: 17px; }
 .market-events-attribution { line-height: 1.4; margin: 10px 0 0; }
 .news-empty-state { border: 1px dashed var(--border); border-radius: 8px; padding: 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.crypto-events-list { display: grid; gap: 7px; max-height: 460px; overflow: auto; }
+.crypto-event { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); }
+.crypto-event-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 4px; }
+.crypto-event-date { color: #93c5fd; font-size: 10px; font-weight: 700; }
+.crypto-event-tags { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 4px; }
+.crypto-event-tag { padding: 2px 5px; border-radius: 4px; background: rgba(59,130,246,.13); color: #bfdbfe; font-size: 9px; font-weight: 650; }
+.crypto-event-title { color: var(--text); font-size: 12px; line-height: 1.4; font-weight: 650; text-decoration: none; }
+.crypto-event-title:hover, .crypto-events-footer a:hover { color: var(--blue); }
+.crypto-event-description { margin: 5px 0 0; color: var(--muted); font-size: 11px; line-height: 1.4; }
+.crypto-event-source { display: inline-block; margin-top: 5px; color: #93c5fd; font-size: 10px; text-decoration: none; }
+.crypto-events-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; }
+.crypto-events-footer .btn { margin-top: 0; }
+.crypto-events-footer a { color: #93c5fd; text-decoration: none; }
 
 /* coins */
 .add-coin { display: flex; gap: 8px; margin-bottom: 8px; }
@@ -201,6 +214,14 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .drawing-label { color: var(--muted); font-size: 10px; font-weight: 600; margin-right: 2px; }
 .chart-drawing-tools .btn.tiny { margin-top: 0; padding: 2px 6px; font-size: 10px; }
 .chart-drawing-tools .btn.active { border-color: var(--amber); color: #fde68a; background: rgba(245,158,11,.12); }
+.drawing-manager { margin: 2px 0 7px; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); }
+.drawing-manager summary { padding: 7px 9px; color: var(--text); font-size: 11px; font-weight: 650; cursor: pointer; }
+#drawing-manager-list { display: grid; gap: 5px; padding: 0 7px 7px; }
+.drawing-manager-row { display: grid; grid-template-columns: 24px minmax(70px,1fr) auto auto; align-items: center; gap: 6px; }
+.drawing-manager-row.is-hidden .drawing-manager-name { opacity: .55; text-decoration: line-through; }
+.drawing-manager-color { width: 24px; height: 25px; padding: 2px; border: 1px solid var(--border); border-radius: 5px; background: var(--card); cursor: pointer; }
+.drawing-manager-name { min-width: 0; width: 100%; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--card); color: var(--text); font-size: 11px; }
+.drawing-manager-row .btn { margin-top: 0; padding: 4px 7px; font-size: 10px; }
 .drawing-text-input { width: 120px; min-width: 90px; border: 1px solid var(--border); border-radius: 6px; background: var(--card2); color: var(--text); padding: 4px 7px; font-size: 10px; }
 #drawing-status { font-size: 10px; }
 #btn-clear-drawings { color: var(--muted); }
