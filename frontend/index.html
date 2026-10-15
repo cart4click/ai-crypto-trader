@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <title>AI Crypto Trader · C4C</title>
-  <link rel="stylesheet" href="/style.css?v=chart-navigation-tools" />
+  <link rel="stylesheet" href="/style.css?v=indicator-overlays-event-calendar" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="/config.js?v=google-sign-in"></script>
 </head>
@@ -100,6 +100,7 @@
           </div>
           <div id="active-indicators" class="active-indicators" aria-live="polite"></div>
           <div id="indicator-readouts" class="indicator-readouts" aria-live="polite"></div>
+          <div class="muted small indicator-display-note">EMA, Bollinger Bands and Supertrend appear on the price chart. RSI, MACD and ATR show as readouts.</div>
         </div>
         <div id="supertrend-dashboard" class="supertrend-dashboard" aria-live="polite"></div>
         <div class="chart-navigation-tools" role="toolbar" aria-label="Chart zoom and pan controls">
@@ -154,6 +155,25 @@
         <div id="pending-list"><div class="muted small">None.</div></div>
       </div>
       <div class="card">
+        <h3>📅 Market events</h3>
+        <p class="muted small market-events-note">Upcoming US, EU and UK economic releases that can affect crypto markets.</p>
+        <div class="tradingview-widget-container market-events-widget">
+          <div class="tradingview-widget-container__widget"></div>
+          <div class="tradingview-widget-copyright"><a href="https://www.tradingview.com/economic-calendar/" target="_blank" rel="noopener noreferrer">Economic Calendar</a><span class="muted small"> by TradingView</span></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+          {
+            "colorTheme": "dark",
+            "isTransparent": true,
+            "locale": "en",
+            "countryFilter": "us,eu,gb",
+            "importanceFilter": "0,1",
+            "width": "100%",
+            "height": 420
+          }
+          </script>
+        </div>
+      </div>
+      <div class="card">
         <h3>📰 News &amp; AI analysis</h3>
         <div id="news-list"><div class="muted small">loading…</div></div>
       </div>
@@ -190,6 +210,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=indicator-picker-fix"></script>
+  <script src="/app.js?v=indicator-overlays-event-calendar"></script>
 </body>
 </html>

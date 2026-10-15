@@ -615,6 +615,73 @@ function ema(values, period) {
   }, []);
 }
 
+function buildSupertrendOverlay(candles, period = 10, multiplier = 3) {
+  if (candles.length < period + 1) return [];
+  const trueRanges = candles.map((candle, index) => {
+    if (!index) return candle.high - candle.low;
+    const previousClose = candles[index - 1].close;
+    return Math.max(candle.high - candle.low, Math.abs(candle.high - previousClose), Math.abs(candle.low - previousClose));
+  });
+  const atr = Array(candles.length).fill(null);
+  atr[period - 1] = trueRanges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+  for (let index = period; index < candles.length; index++) {
+    atr[index] = (atr[index - 1] * (period - 1) + trueRanges[index]) / period;
+  }
+  const bullish = Array(candles.length).fill(null);
+  const bearish = Array(candles.length).fill(null);
+  let upperBand = null, lowerBand = null, direction = null;
+  for (let index = period - 1; index < candles.length; index++) {
+    const candle = candles[index];
+    const midpoint = (candle.high + candle.low) / 2;
+    const basicUpper = midpoint + multiplier * atr[index];
+    const basicLower = midpoint - multiplier * atr[index];
+    const previousClose = candles[index - 1]?.close ?? candle.close;
+    const nextUpper = upperBand == null || basicUpper < upperBand || previousClose > upperBand ? basicUpper : upperBand;
+    const nextLower = lowerBand == null || basicLower > lowerBand || previousClose < lowerBand ? basicLower : lowerBand;
+    if (direction == null) direction = candle.close >= midpoint ? "bullish" : "bearish";
+    else if (direction === "bearish" && candle.close > nextUpper) direction = "bullish";
+    else if (direction === "bullish" && candle.close < nextLower) direction = "bearish";
+    if (direction === "bullish") bullish[index] = nextLower;
+    else bearish[index] = nextUpper;
+    upperBand = nextUpper;
+    lowerBand = nextLower;
+  }
+  return [
+    { label: "Supertrend bullish", data: bullish, borderColor: "#22c55e", borderWidth: 1.5, pointRadius: 0, tension: 0, spanGaps: false },
+    { label: "Supertrend bearish", data: bearish, borderColor: "#ef4444", borderWidth: 1.5, pointRadius: 0, tension: 0, spanGaps: false },
+  ];
+}
+
+function buildPriceIndicatorOverlays(candles, closes) {
+  const overlays = [];
+  if (activeIndicators.includes("ema")) {
+    overlays.push(
+      { label: "EMA 20", data: ema(closes, 20), borderColor: "#f59e0b", borderWidth: 1.5, pointRadius: 0, tension: 0 },
+      { label: "EMA 50", data: ema(closes, 50), borderColor: "#a855f7", borderWidth: 1.5, pointRadius: 0, tension: 0 },
+    );
+  }
+  if (activeIndicators.includes("bollinger") && closes.length >= 20) {
+    const upper = Array(closes.length).fill(null);
+    const middle = Array(closes.length).fill(null);
+    const lower = Array(closes.length).fill(null);
+    for (let index = 19; index < closes.length; index++) {
+      const sample = closes.slice(index - 19, index + 1);
+      const mean = sample.reduce((sum, value) => sum + value, 0) / sample.length;
+      const deviation = Math.sqrt(sample.reduce((sum, value) => sum + (value - mean) ** 2, 0) / sample.length);
+      middle[index] = mean;
+      upper[index] = mean + 2 * deviation;
+      lower[index] = mean - 2 * deviation;
+    }
+    overlays.push(
+      { label: "Bollinger upper", data: upper, borderColor: "rgba(56,189,248,.8)", borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0 },
+      { label: "Bollinger middle", data: middle, borderColor: "rgba(56,189,248,.55)", borderWidth: 1, pointRadius: 0, tension: 0 },
+      { label: "Bollinger lower", data: lower, borderColor: "rgba(56,189,248,.8)", borderWidth: 1, borderDash: [4, 3], pointRadius: 0, tension: 0 },
+    );
+  }
+  if (activeIndicators.includes("supertrend")) overlays.push(...buildSupertrendOverlay(candles));
+  return overlays;
+}
+
 function renderIndicatorReadouts(candles) {
   const selectedReadouts = activeIndicators.filter(name => name !== "supertrend");
   if (!selectedReadouts.length) {
@@ -1034,6 +1101,7 @@ async function renderPublicMarketChart(symbol) {
     month: "short", day: "numeric", hour: "2-digit", minute: chartInterval.endsWith("m") ? "2-digit" : undefined,
   }));
   const closes = candles.map(candle => candle.close);
+  const priceOverlays = buildPriceIndicatorOverlays(candles, closes);
   const latestPrice = closes[closes.length - 1];
   const previousPrice = closes[closes.length - 2];
   const changePct = previousPrice ? (latestPrice / previousPrice - 1) * 100 : 0;
@@ -1047,6 +1115,7 @@ async function renderPublicMarketChart(symbol) {
     data: { labels, datasets: [
       { label: `${symbol} · ${chartInterval} close`, data: closes,
         borderColor: chartStyle === "candles" ? "transparent" : "#3b82f6", borderWidth: 2, pointRadius: 0, tension: 0.2 },
+      ...priceOverlays,
     ] },
     options: {
       responsive: true, maintainAspectRatio: false,
@@ -1069,8 +1138,8 @@ async function renderPublicMarketChart(symbol) {
   chart.$indicatorCandles = candles;
   chart.$chartBounds = {
     xMin: 0, xMax: candles.length - 1,
-    yMin: Math.min(...candles.map(candle => candle.low)),
-    yMax: Math.max(...candles.map(candle => candle.high)),
+    yMin: Math.min(...candles.map(candle => candle.low), ...priceOverlays.flatMap(dataset => dataset.data).filter(Number.isFinite)),
+    yMax: Math.max(...candles.map(candle => candle.high), ...priceOverlays.flatMap(dataset => dataset.data).filter(Number.isFinite)),
   };
   chart.update();
   $("#market-updated").textContent = `Updated ${new Date().toLocaleTimeString()} · auto refresh: 10 seconds`;
