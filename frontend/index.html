@@ -88,6 +88,7 @@
           <div class="indicator-add-row">
             <label class="muted small" for="indicator-select">Indicators <span id="indicator-count"></span></label>
             <select id="indicator-select" class="market-select" aria-label="Choose an indicator to add">
+              <option value="" disabled selected>Choose indicator…</option>
               <option value="supertrend">Multi-timeframe Supertrend</option>
               <option value="rsi">Relative Strength Index (RSI)</option>
               <option value="macd">MACD</option>
@@ -189,6 +190,6 @@
   </div>
 
   <div id="toast" class="toast"></div>
-  <script src="/app.js?v=chart-navigation-tools"></script>
+  <script src="/app.js?v=indicator-picker-fix"></script>
 </body>
 </html>

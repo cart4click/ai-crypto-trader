@@ -590,11 +590,16 @@ function renderForecast(f) {
 function renderIndicatorControls() {
   const select = $("#indicator-select");
   const addButton = $("#btn-add-indicator");
+  const available = Object.keys(INDICATOR_OPTIONS).filter(name => !activeIndicators.includes(name));
+  if (!available.includes(select.value)) select.value = available[0] || "";
+  const atLimit = activeIndicators.length >= 3;
   select.querySelectorAll("option").forEach(option => {
-    option.disabled = activeIndicators.includes(option.value);
+    option.disabled = !option.value || atLimit || activeIndicators.includes(option.value);
   });
   $("#indicator-count").textContent = `(${activeIndicators.length}/3 selected)`;
-  addButton.disabled = activeIndicators.length >= 3 || activeIndicators.includes(select.value);
+  select.disabled = atLimit || available.length === 0;
+  addButton.disabled = atLimit || !INDICATOR_OPTIONS[select.value] || activeIndicators.includes(select.value);
+  addButton.textContent = atLimit ? "Maximum selected" : "Add indicator";
   $("#active-indicators").innerHTML = activeIndicators.length
     ? activeIndicators.map(name => `<span class="indicator-pill">${esc(INDICATOR_OPTIONS[name])}<button type="button" data-remove-indicator="${name}" aria-label="Remove ${esc(INDICATOR_OPTIONS[name])}" title="Remove indicator">×</button></span>`).join("")
     : '<span class="muted small">No indicators selected.</span>';
