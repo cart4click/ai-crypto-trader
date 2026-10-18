@@ -31,6 +31,11 @@
       <form id="email-form" class="login-step" novalidate>
         <label for="email-address">Email</label>
         <input id="email-address" name="email" type="email" autocomplete="email" maxlength="254" required />
+       <!-- Cloudflare Turnstile CAPTCHA -->
+     <div
+      class="cf-turnstile"
+       data-sitekey="0x4AAAAAAFaA7kJaQr3AQBGg">
+    </div>
         <button class="btn primary login-next" type="submit">Send OTP</button>
       </form>
       <form id="code-form" class="login-step" hidden novalidate>
@@ -47,5 +52,11 @@
       <p class="login-footnote">Codes expire according to your Supabase Auth settings. Never share a verification code.</p>
     </section>
   </main>
+<script
+  src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+  async
+  defer>
+</script>
+
 </body>
 </html>
