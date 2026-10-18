@@ -1,6 +1,5 @@
 /* AI Crypto Trader — dashboard logic */
 const $ = (s) => document.querySelector(s);
-let TOKEN = localStorage.getItem("app_token") || "";
 let chart = null;
 let drawingTool = null;
 let chartDrawings = [];
@@ -45,32 +44,14 @@ let priceAlerts = (() => {
   } catch { return []; }
 })();
 
-// Function to clear cached token
-function clearToken() {
-  localStorage.removeItem("app_token");
-  TOKEN = "";
-  toast("Token cleared - please refresh and enter new token");
-  setTimeout(() => location.reload(), 1500);
-}
 let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
-const ACCOUNT_SESSION_KEY = "c4c-auth-session";
-const ACCOUNT_USER_KEY = "c4c-auth-user";
 const accountLink = $("#account-link");
 function renderAccountLink() {
   if (!accountLink) return;
-  let user;
-  try { user = JSON.parse(localStorage.getItem(ACCOUNT_USER_KEY) || "null"); } catch { user = null; }
-  if (!localStorage.getItem(ACCOUNT_SESSION_KEY) || !user?.first_name) {
-    accountLink.textContent = "Sign in";
-    accountLink.href = "/login.html";
-    accountLink.onclick = null;
-    return;
-  }
-  accountLink.textContent = "Sign in";
-  accountLink.href = "/login.html";
-  accountLink.onclick = null;
+  accountLink.textContent = "Sign out";
+  accountLink.onclick = () => { void window.C4CAuth.logout(); };
 }
 renderAccountLink();
 
@@ -275,15 +256,15 @@ function saveLocalWatchlist() {
 /* ------------------------------------------------------------------ helpers */
 async function api(path, opts = {}) {
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
-  if (TOKEN) opts.headers["X-App-Token"] = TOKEN;
+  const accessToken = await window.C4CAuth.getAccessToken();
+  if (!accessToken) {
+    location.replace(`/login.html?returnTo=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`);
+    throw new Error("Sign in is required.");
+  }
+  opts.headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch(`${API_BASE_URL}${path}`, opts);
   if (res.status === 401) {
-    // Clear the cached token since it's not working
-    localStorage.removeItem("app_token");
-    TOKEN = "";
-    
-    const t = prompt("This server requires an access token (APP_TOKEN from .env):");
-    if (t) { TOKEN = t; localStorage.setItem("app_token", t); return api(path, opts); }
+    location.replace(`/login.html?returnTo=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}&message=Your%20sign-in%20session%20expired.`);
     throw new Error("unauthorized");
   }
   if (opts.method === "POST" || opts.method === "DELETE") {
@@ -1937,9 +1918,6 @@ $("#btn-report").addEventListener("click", async () => {
   } catch (e) { toast(e.message, true); }
 });
 
-$("#btn-clear-token").addEventListener("click", () => {
-  clearToken();
-});
 
 $("#btn-ai-status").addEventListener("click", () => {
   refreshAIStatus();

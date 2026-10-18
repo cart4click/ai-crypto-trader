@@ -8,7 +8,7 @@ A locally-hosted AI trading assistant for Binance **spot** trading:
 | 2 | AI forecast (low/high + graph) and news analysis | Bootstrap Monte-Carlo simulation (2,000 paths) predicts the next-24h **low/high with a 95% confidence fan** on the chart; news headlines (CoinDesk / CoinTelegraph / Decrypt) are scored bullish/bearish + Fear & Greed index. Optionally an LLM (OpenAI-compatible) writes a market summary. |
 | 3 | Private Telegram notifications + confirmations | Bot token + **chat-id whitelist**. Every LIVE order waits for your ✅ Confirm / ❌ Cancel button press in your private chat. Nobody else can trigger or confirm anything. |
 | 4 | Locally hosted web app | FastAPI serves a dashboard at `http://127.0.0.1:8000` — chart, forecast, news, positions, trade log, pending confirmations, bot controls. |
-| 5 | Everything via APIs, all secure | Binance/Telegram/LLM keys live only in `.env` on your machine; server binds to 127.0.0.1; optional `APP_TOKEN` protects the UI; HTTPS to all external APIs. |
+| 5 | Everything via APIs, all secure | Binance/Telegram/LLM keys live only in `.env` on your machine; server APIs validate Supabase user sessions; HTTPS to all external APIs. |
 | 6 | 6% dip-buy / 6% high-sell rules + AI override | Configure per coin (defaults 6%/6%). The engine signals a buy when price ≤ anchor −6% and a sell when price ≥ avg cost +6%. **When a signal fires, the AI is consulted:** if it forecasts a *deeper* dip it says WAIT (and explains why in Telegram); same for holding out for a *higher* high before selling. |
 
 ---
@@ -106,8 +106,8 @@ DRY_RUN default.
 - Keys live **only** in `.env` (gitignored). Never logged, never returned by the API.
 - **No withdrawal code exists** in this app — and your Binance key should have
   withdrawals disabled anyway, so funds physically can't leave the exchange.
-- Web server binds to `127.0.0.1`. For LAN access set `APP_HOST=0.0.0.0` **and**
-  `APP_TOKEN=<long random string>`; the dashboard will ask for the token once.
+- Web server binds to `127.0.0.1`. For LAN access set `APP_HOST=0.0.0.0` and
+  configure Supabase authentication before exposing the API.
 - Telegram is a private channel via chat-id whitelist.
 - All external calls are HTTPS (Binance, Telegram, news, LLM).
 
@@ -117,11 +117,11 @@ The included GitHub Actions workflow publishes only the `frontend/` directory
 to GitHub Pages. The price chart reads public hourly candles from Binance and
 works without the app server. The static site also has a browser-saved watchlist
 of popular Binance USDT pairs and can load their public prices without an API
-key. GitHub Pages cannot run the FastAPI app, so forecasts, trading controls,
-and email sign-in require a separate server running `run.py`.
+key. GitHub Pages cannot run the FastAPI app, so forecasts and trading controls
+require a separate server running `run.py`.
 
 1. Deploy the FastAPI app on a server or Python application host with a public
-   **HTTPS** URL. Keep `APP_HOST=0.0.0.0`, set a long `APP_TOKEN`, and set
+   **HTTPS** URL. Set
    `APP_CORS_ORIGINS=https://www.cart4click.com,https://cart4click.com`.
 2. In `frontend/config.js`, set `window.API_BASE_URL` to that backend's HTTPS
    origin (for example `https://api.example.com`), then publish the Pages site
@@ -137,40 +137,32 @@ The dashboard links directly to the public event calendars at CoinMarketCap
 and CoinMarketCal. Visitors can browse current events on those sites; no API
 key or account is required by this dashboard.
 
-### Email sign-in setup
+### Supabase email OTP setup
 
-The sign-in page sends a six-digit, single-use code through the FastAPI backend.
-Configure an authenticated SMTP mailbox on that backend before enabling it:
+Cart4Click uses Supabase Auth for passwordless email OTP. The frontend calls
+Supabase directly with the project's **publishable** key. This key is safe to
+deliver to a browser and is not a service-role key. IONOS SMTP credentials stay
+inside Supabase and must never be added to this repository, GitHub Pages, or
+the FastAPI environment.
 
-```dotenv
-SMTP_HOST=smtp.your-provider.example
-SMTP_PORT=587
-SMTP_USERNAME=your-mailbox@example.com
-SMTP_PASSWORD=your-mailbox-password
-SMTP_FROM_EMAIL=your-mailbox@example.com
-```
+1. In Supabase **Authentication → Providers**, enable Email. In the Magic Link
+   email template, include `{{ .Token }}` so Supabase sends a six-digit OTP.
+2. In Supabase **Authentication → URL Configuration**, set the Site URL to
+   `https://www.cart4click.com` and add `https://www.cart4click.com/**` and
+   `https://cart4click.com/**` to the redirect allow list.
+3. In GitHub **Settings → Secrets and variables → Actions → Variables**, add
+   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The Pages workflow writes
+   these public values to the deployment artifact; do not add a service-role
+   key or SMTP credential there.
+4. For a deployed FastAPI backend, set the same `SUPABASE_URL` and
+   `SUPABASE_PUBLISHABLE_KEY` in its host's server-side environment-variable
+   settings. The backend validates every `/api/` Bearer token with Supabase
+   before processing a request.
 
-Use the SMTP host and credentials provided by your email host (IONOS if using
-an IONOS mailbox). Keep these values only in the backend environment, never in
-the GitHub Pages frontend. The login endpoints are exempt from `APP_TOKEN` so
-visitors can request a code; configure `APP_CORS_ORIGINS` for the website's
-HTTPS origins and set `API_BASE_URL` to the HTTPS backend origin. Codes expire
-after 10 minutes, allow five verification attempts, and are rate limited.
-The current lightweight sign-in sessions and rate limits are held in backend
-memory, so a backend restart clears existing sign-ins.
-
-### Google sign-in setup
-
-Google sign-in uses Google's Identity Services button and verifies its ID token
-on the FastAPI backend. Create a **Web application** OAuth client in Google
-Cloud, add `https://www.cart4click.com` and `https://cart4click.com` as
-authorized JavaScript origins, then set the same client ID in
-`frontend/config.js` (`window.GOOGLE_CLIENT_ID`) and the backend environment
-(`GOOGLE_CLIENT_ID`). The ID is public; never put a client secret in the
-frontend. Deploy the updated backend and frontend over HTTPS with the CORS
-origins above. Until both IDs and the HTTPS API are configured, the page shows
-Google sign-in as unavailable and email login remains available when SMTP is
-configured.
+The GitHub Pages dashboard sends unauthenticated visitors to the login page.
+As with every static-site host, its HTML files can still be downloaded directly;
+the FastAPI APIs are the server-protected boundary. Put sensitive data behind
+those APIs and Supabase Row Level Security policies.
 
 Do not put Binance, Telegram, or AI provider credentials in `frontend/` or
 `config.js`; those belong only in the backend's environment. The chart displays

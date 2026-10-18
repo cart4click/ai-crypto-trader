@@ -1,9 +1,5 @@
 
-"""FastAPI backend + static dashboard.
-
-Binds to 127.0.0.1 by default (local only). If APP_TOKEN is set in .env,
-every /api/* request must carry it (X-App-Token header or ?token= query).
-"""
+"""FastAPI backend + static dashboard protected by Supabase Auth."""
 import asyncio
 import datetime as dt
 import logging
@@ -18,13 +14,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from . import ai_provider
-from .auth import router as auth_router
-
 from . import forecast
 from .ai_provider import get_global_provider_manager
 from .binance_client import BinanceError
 from .config import settings
 from .strategy import BotRunner
+from .supabase_auth import get_authenticated_user
 
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(levelname)s %(name)s: %(message)s")
@@ -51,17 +46,17 @@ if settings.app_cors_origins:
         CORSMiddleware,
         allow_origins=settings.app_cors_origins,
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type", "X-App-Token"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 
 
 @app.middleware("http")
 async def token_guard(request: Request, call_next):
-    if (settings.app_token and request.url.path.startswith("/api/")
-            and not request.url.path.startswith("/api/auth/")):
-        tok = request.headers.get("X-App-Token") or request.query_params.get("token")
-        if tok != settings.app_token:
-            return JSONResponse({"error": "unauthorized — X-App-Token required"}, status_code=401)
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        try:
+            request.state.user = await get_authenticated_user(request)
+        except HTTPException as exc:
+            return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
     return await call_next(request)
 
 
@@ -665,9 +660,6 @@ async def get_ai_chat_response(user_message, context, chat_history=None):
     except Exception as e:
         logging.getLogger(__name__).warning(f"AI chat failed: {e}")
         return "I'm having trouble connecting to my AI provider right now. Please try again or use specific commands like 'report' or 'balance'."
-
-
-app.include_router(auth_router)
 
 
 async def get_live_market_snapshot(symbols: list[str]) -> list[dict]:

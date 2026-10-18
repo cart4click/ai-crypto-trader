@@ -31,19 +31,16 @@ class Settings:
 
     app_host: str = os.getenv("APP_HOST", "127.0.0.1")
     app_port: int = int(os.getenv("APP_PORT", "8000"))
-    app_token: str = os.getenv("APP_TOKEN", "")
     app_cors_origins: list[str] = [
         origin.strip().rstrip("/")
         for origin in os.getenv("APP_CORS_ORIGINS", "").split(",")
         if origin.strip()
     ]
 
-    smtp_host: str = os.getenv("SMTP_HOST", "")
-    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
-    smtp_username: str = os.getenv("SMTP_USERNAME", "")
-    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
-    smtp_from_email: str = os.getenv("SMTP_FROM_EMAIL", "")
-    google_client_id: str = os.getenv("GOOGLE_CLIENT_ID", "")
+    # This is a browser-safe Supabase key, not a service-role key. SMTP remains
+    # configured inside Supabase and is never read by this app.
+    supabase_url: str = os.getenv("SUPABASE_URL", "").rstrip("/")
+    supabase_publishable_key: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
 
     dry_run: bool = _bool(os.getenv("DRY_RUN"), True)
     max_order_usdt: float = float(os.getenv("MAX_ORDER_USDT", "100"))

@@ -18,6 +18,16 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - name: Write public Supabase browser configuration
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+        run: |
+          cat > frontend/supabase-config.js <<EOF
+          // Generated during deployment from GitHub Actions Variables.
+          window.SUPABASE_URL = "${SUPABASE_URL}";
+          window.SUPABASE_PUBLISHABLE_KEY = "${SUPABASE_PUBLISHABLE_KEY}";
+          EOF
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

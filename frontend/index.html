@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-pending" data-protected-page="true">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -7,7 +7,10 @@
   <title>AI Crypto Trader · C4C</title>
   <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <script src="/config.js?v=google-sign-in"></script>
+  <script src="/config.js"></script>
+  <script src="/supabase-config.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/auth.js"></script>
 </head>
 <body>
   <header>
@@ -21,11 +24,10 @@
     </div>
     <div class="conn" id="connections"></div>
     <div class="actions">
-      <a id="account-link" class="btn" href="/login.html">Sign in</a>
+      <button id="account-link" class="btn" type="button">Sign out</button>
       <button id="btn-bot" class="btn primary">▶ Start bot</button>
       <button id="btn-balances" class="btn">💰 Balances</button>
       <button id="btn-report" class="btn">📊 AI Report</button>
-      <button id="btn-clear-token" class="btn">🔑 Reset Token</button>
     </div>
   </header>
 
@@ -239,6 +241,6 @@
     <button type="button" role="menuitem" data-drawing-action="copy">Copy</button>
     <button type="button" role="menuitem" data-drawing-action="hide">Hide</button>
   </div>
-  <script src="/app.js?v=public-crypto-calendars"></script>
+  <script src="/app.js"></script>
 </body>
 </html>

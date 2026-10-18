@@ -1,0 +1,64 @@
+/* Shared Supabase Auth helpers for the static Cart4Click frontend. */
+(() => {
+  let client;
+
+  function configured() {
+    return Boolean(window.SUPABASE_URL && window.SUPABASE_PUBLISHABLE_KEY && window.supabase?.createClient);
+  }
+
+  function getClient() {
+    if (!configured()) throw new Error("Sign-in is not configured yet. Please contact the site administrator.");
+    if (!client) {
+      client = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      });
+    }
+    return client;
+  }
+
+  async function getVerifiedUser() {
+    const supabase = getClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return null;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) return null;
+    return data.user;
+  }
+
+  async function getAccessToken() {
+    const supabase = getClient();
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token || null;
+  }
+
+  function loginUrl(message) {
+    const target = `${location.pathname}${location.search}${location.hash}`;
+    const query = new URLSearchParams({ returnTo: target });
+    if (message) query.set("message", message);
+    return `/login.html?${query.toString()}`;
+  }
+
+  async function requireDashboardSession() {
+    try {
+      const user = await getVerifiedUser();
+      if (!user) {
+        location.replace(loginUrl());
+        return null;
+      }
+      document.documentElement.classList.remove("auth-pending");
+      document.dispatchEvent(new CustomEvent("c4c:authenticated", { detail: { user } }));
+      return user;
+    } catch (error) {
+      location.replace(loginUrl(error.message));
+      return null;
+    }
+  }
+
+  async function logout() {
+    if (configured()) await getClient().auth.signOut();
+    location.replace("/login.html?message=You%20have%20been%20signed%20out.");
+  }
+
+  window.C4CAuth = { configured, getClient, getVerifiedUser, getAccessToken, requireDashboardSession, logout };
+  if (document.documentElement.dataset.protectedPage === "true") void requireDashboardSession();
+})();
