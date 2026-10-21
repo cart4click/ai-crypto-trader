@@ -10,11 +10,7 @@
     ["SOLUSDT", "SOL"],
     ["XRPUSDT", "XRP"],
   ];
-  const newsFeeds = [
-    ["CoinDesk", "https://www.coindesk.com/arc/outboundfeeds/rss/"],
-    ["Decrypt", "https://decrypt.co/feed"],
-    ["Cointelegraph", "https://cointelegraph.com/rss"],
-  ];
+  const newsFeed = "https://news.google.com/rss/search?q=cryptocurrency&hl=en-US&gl=US&ceid=US:en";
 
   const escapeText = value => String(value || "").replace(/[&<>\"']/g, character => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
@@ -78,7 +74,7 @@
 
   function feedItem(source, item) {
     const url = String(item.link || "");
-    const trusted = /^https:\/\/(www\.)?(coindesk\.com|decrypt\.co|cointelegraph\.com)\//i.test(url);
+    const trusted = /^https:\/\/(www\.)?(news\.google\.com|coindesk\.com|decrypt\.co|cointelegraph\.com)\//i.test(url);
     const title = escapeText(item.title || "Untitled headline");
     const age = item.pubDate ? new Date(item.pubDate) : null;
     const ageText = age && Number.isFinite(age.getTime()) ? `${Math.max(0, Math.floor((Date.now() - age.getTime()) / 3600000))}h ago` : "recent";
@@ -87,14 +83,16 @@
 
   async function loadNews() {
     try {
-      const results = await Promise.allSettled(newsFeeds.map(async ([source, feedUrl]) => {
-        const endpoint = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`;
-        const feed = await getJson(endpoint);
-        if (feed.status !== "ok") throw new Error(`${source} feed unavailable`);
-        return (feed.items || []).slice(0, 5).map(item => ({ ...item, source }));
+      const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(newsFeed)}`;
+      const xml = await (await fetch(proxyUrl, { cache: "no-store" })).text();
+      const document = new DOMParser().parseFromString(xml, "application/xml");
+      if (document.querySelector("parsererror")) throw new Error("News feed could not be parsed");
+      const items = [...document.querySelectorAll("item")].slice(0, 5).map(item => ({
+        title: item.querySelector("title")?.textContent || "Crypto headline",
+        link: item.querySelector("link")?.textContent || "https://news.google.com/",
+        pubDate: item.querySelector("pubDate")?.textContent || "",
+        source: item.querySelector("source")?.textContent || "Google News",
       }));
-      const items = results.flatMap(result => result.status === "fulfilled" ? result.value : [])
-        .sort((a, b) => (Date.parse(b.pubDate) || 0) - (Date.parse(a.pubDate) || 0)).slice(0, 5);
       newsBox.innerHTML = items.length ? items.map(item => feedItem(item.source, item)).join("") : '<div class="live-empty">News is temporarily unavailable.</div>';
     } catch (error) {
       console.warn("Landing news preview unavailable:", error.message);
