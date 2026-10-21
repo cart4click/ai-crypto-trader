@@ -4,6 +4,8 @@ import asyncio
 import datetime as dt
 import logging
 import re
+import time
+from collections import defaultdict, deque
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -39,7 +41,37 @@ async def lifespan(app: FastAPI):
     await ai_manager.close()
 
 
-app = FastAPI(title="AI Crypto Trader", version="1.0.0", lifespan=lifespan)
+# API documentation is intentionally disabled on the public deployment. Keep
+# the schema private until an authenticated/admin documentation route exists.
+app = FastAPI(
+    title="AI Crypto Trader",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+)
+
+_RATE_WINDOW_SECONDS = 60
+_API_REQUESTS_PER_WINDOW = 120
+_CHAT_REQUESTS_PER_WINDOW = 20
+_request_times: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _client_key(request: Request) -> str:
+    """Use the direct peer address; do not trust spoofable forwarded headers."""
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limited(key: str, limit: int, now: float) -> bool:
+    recent = _request_times[key]
+    cutoff = now - _RATE_WINDOW_SECONDS
+    while recent and recent[0] <= cutoff:
+        recent.popleft()
+    if len(recent) >= limit:
+        return True
+    recent.append(now)
+    return False
 
 if settings.app_cors_origins:
     app.add_middleware(
@@ -53,11 +85,33 @@ if settings.app_cors_origins:
 @app.middleware("http")
 async def token_guard(request: Request, call_next):
     if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+        now = time.monotonic()
+        client = _client_key(request)
+        limit = _CHAT_REQUESTS_PER_WINDOW if request.url.path == "/api/chat" else _API_REQUESTS_PER_WINDOW
+        if _rate_limited(f"api:{client}", limit, now):
+            return JSONResponse(
+                {"error": "Too many requests. Please try again later."},
+                status_code=429,
+                headers={"Retry-After": str(_RATE_WINDOW_SECONDS)},
+            )
         try:
             request.state.user = await get_authenticated_user(request)
         except HTTPException as exc:
             return JSONResponse({"error": exc.detail}, status_code=exc.status_code)
-    return await call_next(request)
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://challenges.cloudflare.com; "
+        "style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' https: wss:; "
+        "frame-src https://challenges.cloudflare.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+    )
+    if request.url.scheme == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
 
 
 @app.exception_handler(BinanceError)
@@ -414,6 +468,8 @@ async def chat(request: Request):
     try:
         body = await request.json()
         user_message = body.get("message", "").strip()
+        if len(user_message) > 4000:
+            return JSONResponse({"error": "Message is too long."}, status_code=413)
         chat_history = body.get("history", [])
         if not isinstance(chat_history, list):
             chat_history = []

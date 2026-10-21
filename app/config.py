@@ -42,6 +42,10 @@ class Settings:
     supabase_url: str = os.getenv("SUPABASE_URL", "").rstrip("/")
     supabase_publishable_key: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
 
+    # Cloudflare Turnstile Site Key (public, browser-safe).
+    # The Secret Key is configured in Supabase Auth settings, not here.
+    turnstile_site_key: str = os.getenv("TURNSTILE_SITE_KEY", "")
+
     dry_run: bool = _bool(os.getenv("DRY_RUN"), True)
     max_order_usdt: float = float(os.getenv("MAX_ORDER_USDT", "100"))
     max_daily_usdt: float = float(os.getenv("MAX_DAILY_USDT", "500"))

@@ -22,11 +22,14 @@ jobs:
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
         run: |
           cat > frontend/supabase-config.js <<EOF
           // Generated during deployment from GitHub Actions Variables.
           window.SUPABASE_URL = "${SUPABASE_URL}";
           window.SUPABASE_PUBLISHABLE_KEY = "${SUPABASE_PUBLISHABLE_KEY}";
+          // Cloudflare Turnstile Site Key (public, browser-safe).
+          window.TURNSTILE_SITE_KEY = "${TURNSTILE_SITE_KEY}";
           EOF
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

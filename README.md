@@ -150,14 +150,33 @@ the FastAPI environment.
 2. In Supabase **Authentication → URL Configuration**, set the Site URL to
    `https://www.cart4click.com` and add `https://www.cart4click.com/**` and
    `https://cart4click.com/**` to the redirect allow list.
-3. In GitHub **Settings → Secrets and variables → Actions → Variables**, add
-   `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY`. The Pages workflow writes
-   these public values to the deployment artifact; do not add a service-role
-   key or SMTP credential there.
-4. For a deployed FastAPI backend, set the same `SUPABASE_URL` and
-   `SUPABASE_PUBLISHABLE_KEY` in its host's server-side environment-variable
-   settings. The backend validates every `/api/` Bearer token with Supabase
-   before processing a request.
+3. In Supabase **Authentication → Providers → Email**, enable **Enable Email
+   confirmation** and configure the IONOS SMTP settings. The SMTP credentials
+   are stored in Supabase and never exposed to the frontend.
+4. In GitHub **Settings → Secrets and variables → Actions → Variables**, add
+   `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and `TURNSTILE_SITE_KEY`. The
+   Pages workflow writes these public values to the deployment artifact; do
+   not add a service-role key, SMTP credential, or Turnstile Secret Key there.
+5. For a deployed FastAPI backend, set the same `SUPABASE_URL`,
+   `SUPABASE_PUBLISHABLE_KEY`, and `TURNSTILE_SITE_KEY` in its host's
+   server-side environment-variable settings. The backend validates every
+   `/api/` Bearer token with Supabase before processing a request.
+
+### Cloudflare Turnstile CAPTCHA setup
+
+Cart4Click uses Cloudflare Turnstile CAPTCHA to protect the email OTP flow from
+abuse. The Turnstile Secret Key is configured in Supabase Auth settings, not
+in this application.
+
+1. Create a Turnstile widget at https://dash.cloudflare.com/ for the domain
+   `cart4click.com`. Use the **Managed** challenge type.
+2. Copy the **Site Key** (public) and add it to GitHub Actions Variables as
+   `TURNSTILE_SITE_KEY` and to your FastAPI backend environment.
+3. Copy the **Secret Key** and add it to Supabase **Authentication → Providers
+   → Email → CAPTCHA** settings. Do not add the Secret Key to this repository,
+   GitHub Pages, or the FastAPI environment.
+4. The frontend renders the Turnstile widget using the Site Key. Supabase
+   validates the CAPTCHA token using the Secret Key before sending the OTP.
 
 The GitHub Pages dashboard sends unauthenticated visitors to the login page.
 As with every static-site host, its HTML files can still be downloaded directly;
