@@ -16,6 +16,10 @@
     .landing p { color: var(--muted); line-height: 1.65; }
     .landing-hero p { max-width: 680px; font-size: 16px; }
     .landing-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+    .landing-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 10px 16px; border: 1px solid #64748b; border-radius: 8px; color: #f8fafc; background: #1e293b; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .landing-actions .btn:hover, .landing-actions .btn:focus-visible { border-color: #bfdbfe; background: #334155; color: #fff; }
+    .landing-actions .btn.primary { border-color: #60a5fa; background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.3); }
+    .landing-actions .btn.primary:hover, .landing-actions .btn.primary:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
     .landing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
     .landing-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
     .landing-card h3 { color: var(--text); font-size: 14px; }
@@ -35,8 +39,8 @@
       <h1>Monitor markets with clearer guardrails.</h1>
       <p>Cart4Click combines live crypto market data, forecasts, news, indicators, and an AI assistant in one dashboard. Start in paper-trading mode, understand the signals, and keep control of every action.</p>
       <div class="landing-actions">
-        <a class="btn primary" href="/login.html">Sign in securely</a>
-        <a class="btn" href="#safety">Review safety controls</a>
+        <a class="btn primary landing-signin" href="/login.html">Sign in securely</a>
+        <a class="btn landing-safety" href="#safety">Review safety controls</a>
       </div>
     </section>
 
