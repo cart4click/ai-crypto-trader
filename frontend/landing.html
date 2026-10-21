@@ -8,8 +8,11 @@
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
   <style>
-    .landing { display: block; max-width: 980px; margin: 0 auto; padding: 18px 18px 48px; }
-    .landing-topbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .landing { display: block; max-width: 1440px; margin: 0 auto; padding: 18px 18px 48px; }
+    .landing-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .landing-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 750; text-decoration: none; }
+    .landing-brand small { color: var(--muted); font-weight: 400; }
+    .landing-brand img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
     .landing-topbar a { display: inline-flex; align-items: center; min-height: 36px; padding: 8px 14px; border: 1px solid #60a5fa; border-radius: 8px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.22); }
     .landing-topbar a:hover, .landing-topbar a:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
     .landing-hero { padding: 34px 28px; background: linear-gradient(135deg, #172554, #121826 55%); border: 1px solid #263b72; border-radius: 16px; }
@@ -23,6 +26,31 @@
     .landing-actions .btn:hover, .landing-actions .btn:focus-visible { border-color: #bfdbfe; background: #334155; color: #fff; }
     .landing-actions .btn.primary { border-color: #60a5fa; background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.3); }
     .landing-actions .btn.primary:hover, .landing-actions .btn.primary:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
+    .landing-columns { display: grid; grid-template-columns: minmax(190px, 230px) minmax(0, 980px) minmax(190px, 230px); align-items: start; gap: 16px; }
+    .landing-center { min-width: 0; }
+    .live-panel { position: sticky; top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px; }
+    .live-panel h2 { color: var(--text); font-size: 14px; margin: 0; }
+    .live-panel-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+    .live-panel-heading small { color: var(--muted); font-size: 9px; }
+    .live-panel-note { color: var(--muted); font-size: 10px; line-height: 1.4; margin: 0 0 10px; }
+    .live-market-list, .live-news-list { display: grid; gap: 7px; }
+    .live-market { display: grid; grid-template-columns: 1fr 62px; gap: 7px; align-items: center; padding: 8px; background: var(--card2); border: 1px solid var(--border); border-radius: 8px; }
+    .live-market-main { min-width: 0; }
+    .live-market-name { display: flex; align-items: center; justify-content: space-between; gap: 5px; font-size: 11px; font-weight: 700; }
+    .live-market-price { color: var(--text); font-size: 11px; margin-top: 3px; }
+    .live-market-change { font-size: 9px; margin-top: 2px; }
+    .live-market-change.up { color: var(--green); }
+    .live-market-change.down { color: var(--red); }
+    .live-sparkline { width: 62px; height: 28px; }
+    .live-sparkline polyline { fill: none; stroke: #60a5fa; stroke-width: 2; vector-effect: non-scaling-stroke; }
+    .live-sparkline polyline.up { stroke: var(--green); }
+    .live-sparkline polyline.down { stroke: var(--red); }
+    .live-news-item { padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .live-news-item:last-child { border-bottom: 0; }
+    .live-news-item a { color: var(--text); font-size: 11px; line-height: 1.35; text-decoration: none; }
+    .live-news-item a:hover { color: #93c5fd; }
+    .live-news-meta { color: var(--muted); font-size: 9px; margin-top: 4px; }
+    .live-empty { color: var(--muted); font-size: 11px; line-height: 1.45; padding: 8px 0; }
     .landing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
     .landing-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
     .landing-card h3 { color: var(--text); font-size: 14px; }
@@ -32,13 +60,24 @@
     .landing-warning { border-color: #8a6800; background: #3f3000; }
     .landing-footer { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 18px; font-size: 12px; }
     .landing-footer a { color: #93c5fd; margin-right: 16px; }
-    @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } }
+    @media (max-width: 1120px) { .landing-columns { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr); } .live-news-panel { grid-column: 1 / -1; position: static; } .live-news-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } .landing-columns { display: flex; flex-direction: column; } .landing-center { order: 1; width: 100%; } .live-market-panel { order: 2; position: static; width: 100%; } .live-news-panel { order: 3; width: 100%; } .live-news-list { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
   <main class="landing">
-    <div class="landing-topbar"><a href="/login.html">Sign in</a></div>
-    <section class="landing-hero">
+    <div class="landing-topbar">
+      <a class="landing-brand" href="/" aria-label="Cart4Click home"><img src="/ai-crypto-trader.png" alt="" /><span>AI Crypto Trader <small>· C4C</small></span></a>
+      <a class="landing-topbar-signin" href="/login.html">Sign in</a>
+    </div>
+    <div class="landing-columns">
+      <aside class="live-panel live-market-panel" aria-labelledby="live-market-title">
+        <div class="live-panel-heading"><h2 id="live-market-title">Top markets</h2><small>LIVE</small></div>
+        <p class="live-panel-note">A quick public snapshot of five widely followed coins.</p>
+        <div id="live-market-list" class="live-market-list"><div class="live-empty">Loading market data…</div></div>
+      </aside>
+      <div class="landing-center">
+      <section class="landing-hero">
       <div class="landing-eyebrow">CART4CLICK · AI CRYPTO TRADER</div>
       <h1>Monitor markets with clearer guardrails.</h1>
       <p>Cart4Click combines live crypto market data, forecasts, news, indicators, and an AI assistant in one dashboard. Start in paper-trading mode, understand the signals, and keep control of every action.</p>
@@ -46,7 +85,7 @@
         <a class="btn primary landing-signin" href="/login.html">Sign in securely</a>
         <a class="btn landing-safety" href="#safety">Review safety controls</a>
       </div>
-    </section>
+      </section>
 
     <section class="landing-grid" aria-label="Product features">
       <article class="landing-card"><h3>Market intelligence</h3><p>Track prices, candles, watchlists, technical indicators, sentiment, news, and upcoming crypto events.</p></article>
@@ -75,11 +114,19 @@
       <p>By using Cart4Click, you accept responsibility for your account, configuration, trading decisions, and any resulting losses. The service is provided for informational and educational use and may be changed or unavailable without notice.</p>
     </section>
 
-    <footer class="landing-footer">
+      <footer class="landing-footer">
       <a href="/login.html">Sign in</a>
       <a href="#safety">Risk and safety</a>
       <span class="muted">Cart4Click · AI Crypto Trader</span>
-    </footer>
+      </footer>
+      </div>
+      <aside class="live-panel live-news-panel" aria-labelledby="live-news-title">
+        <div class="live-panel-heading"><h2 id="live-news-title">Crypto news</h2><small>LIVE FEED</small></div>
+        <p class="live-panel-note">Recent headlines from public crypto publishers.</p>
+        <div id="live-news-list" class="live-news-list"><div class="live-empty">Loading headlines…</div></div>
+      </aside>
+    </div>
   </main>
+  <script src="/landing.js"></script>
 </body>
 </html>
