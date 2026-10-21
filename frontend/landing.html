@@ -8,7 +8,10 @@
   <link rel="icon" type="image/png" href="/favicon.png?v=2" />
   <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
   <style>
-    .landing { max-width: 980px; margin: 0 auto; padding: 26px 18px 48px; }
+    .landing { display: block; max-width: 980px; margin: 0 auto; padding: 18px 18px 48px; }
+    .landing-topbar { display: flex; justify-content: flex-end; margin-bottom: 12px; }
+    .landing-topbar a { display: inline-flex; align-items: center; min-height: 36px; padding: 8px 14px; border: 1px solid #60a5fa; border-radius: 8px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.22); }
+    .landing-topbar a:hover, .landing-topbar a:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
     .landing-hero { padding: 34px 28px; background: linear-gradient(135deg, #172554, #121826 55%); border: 1px solid #263b72; border-radius: 16px; }
     .landing-eyebrow { color: #93c5fd; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
     .landing h1 { font-size: clamp(30px, 6vw, 54px); line-height: 1.05; margin: 10px 0 14px; }
@@ -34,6 +37,7 @@
 </head>
 <body>
   <main class="landing">
+    <div class="landing-topbar"><a href="/login.html">Sign in</a></div>
     <section class="landing-hero">
       <div class="landing-eyebrow">CART4CLICK · AI CRYPTO TRADER</div>
       <h1>Monitor markets with clearer guardrails.</h1>
