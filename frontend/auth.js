@@ -1,6 +1,9 @@
 /* Shared Supabase Auth helpers for the static Cart4Click frontend. */
 (() => {
   let client;
+  let idleTimer;
+  const IDLE_TIMEOUT_MS = 3 * 60 * 1000;
+  const ACTIVITY_EVENTS = ["pointerdown", "keydown", "touchstart", "scroll", "mousemove"];
 
   function configured() {
     return Boolean(window.SUPABASE_URL && window.SUPABASE_PUBLISHABLE_KEY && window.supabase?.createClient);
@@ -59,6 +62,24 @@
     location.replace("/login.html?message=You%20have%20been%20signed%20out.");
   }
 
+  function resetIdleTimer() {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      void logout();
+    }, IDLE_TIMEOUT_MS);
+  }
+
+  function startIdleLogout() {
+    ACTIVITY_EVENTS.forEach(eventName => {
+      window.addEventListener(eventName, resetIdleTimer, { passive: true });
+    });
+    resetIdleTimer();
+  }
+
   window.C4CAuth = { configured, getClient, getVerifiedUser, getAccessToken, requireDashboardSession, logout };
-  if (document.documentElement.dataset.protectedPage === "true") void requireDashboardSession();
+  if (document.documentElement.dataset.protectedPage === "true") {
+    void requireDashboardSession().then(user => {
+      if (user) startIdleLogout();
+    });
+  }
 })();
