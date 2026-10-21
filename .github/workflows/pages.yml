@@ -36,6 +36,10 @@ jobs:
           # Ensure browsers and the Pages CDN fetch the generated public config
           # again after every deployment.
           sed -i "s|supabase-config.js|supabase-config.js?v=${GITHUB_SHA}|g" frontend/*.html
+          # Authentication code controls the public-entry redirect. Version it
+          # with the deployment so a stale CDN copy cannot restore the old
+          # login loop after a successful Pages build.
+          sed -i "s|auth.js|auth.js?v=${GITHUB_SHA}|g" frontend/*.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
