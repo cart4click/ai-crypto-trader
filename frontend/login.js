@@ -22,8 +22,8 @@
     const text = error?.message || fallback;
     if (/rate limit|too many requests|security purposes/i.test(text)) return "Too many requests. Please wait before trying again.";
     if (/expired/i.test(text)) return "That code expired. Request a new code and try again.";
+    if (/captcha|turnstile/i.test(text)) return "CAPTCHA verification failed. Please complete the CAPTCHA and try again.";
     if (/invalid|incorrect|token/i.test(text)) return "That code is incorrect or no longer valid. Check it and try again, or request a new code.";
-    if (/captcha/i.test(text)) return "CAPTCHA verification failed. Please complete the CAPTCHA and try again.";
     return text;
   }
 

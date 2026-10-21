@@ -22,7 +22,9 @@ jobs:
         env:
           SUPABASE_URL: ${{ vars.SUPABASE_URL }}
           SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_PUBLISHABLE_KEY }}
-          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY }}
+          # The site key is public. Keep the repository fallback so a missing
+          # Actions variable cannot silently deploy a broken OTP form.
+          TURNSTILE_SITE_KEY: ${{ vars.TURNSTILE_SITE_KEY || '0x4AAAAAAFaA7kJaQr3AQBGg' }}
         run: |
           cat > frontend/supabase-config.js <<EOF
           // Generated during deployment from GitHub Actions Variables.
