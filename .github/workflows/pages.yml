@@ -33,6 +33,9 @@ jobs:
           // Cloudflare Turnstile Site Key (public, browser-safe).
           window.TURNSTILE_SITE_KEY = "${TURNSTILE_SITE_KEY}";
           EOF
+          # Ensure browsers and the Pages CDN fetch the generated public config
+          # again after every deployment.
+          sed -i "s|supabase-config.js|supabase-config.js?v=${GITHUB_SHA}|g" frontend/*.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
