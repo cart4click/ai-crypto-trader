@@ -311,6 +311,20 @@ async function refreshStatus() {
     const st = await api("/api/status");
     $("#mode-badge").textContent = st.mode + (st.testnet && !st.dry_run ? " · TESTNET" : "");
     $("#mode-badge").className = "badge " + (st.dry_run ? "dry" : "live");
+    const modeBanner = $("#mode-safety-banner");
+    if (modeBanner) {
+      modeBanner.hidden = false;
+      if (st.dry_run) {
+        modeBanner.className = "mode-safety-banner dry-run";
+        modeBanner.textContent = "PAPER TRADING · DRY RUN — Orders are simulated; no real funds are used.";
+      } else if (st.testnet) {
+        modeBanner.className = "mode-safety-banner testnet";
+        modeBanner.textContent = "TESTNET TRADING — Binance testnet funds only; verify settings before going live.";
+      } else {
+        modeBanner.className = "mode-safety-banner live-trading";
+        modeBanner.textContent = "LIVE TRADING — Real orders and real funds are enabled. Review every setting carefully.";
+      }
+    }
     $("#bot-state").textContent = st.running ? "bot running" : "bot paused";
     $("#bot-state").className = "badge " + (st.running ? "on" : "off");
     $("#btn-bot").textContent = st.running ? "⏸ Pause bot" : "▶ Start bot";

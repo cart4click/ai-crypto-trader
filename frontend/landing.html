@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Cart4Click is an AI-assisted crypto market monitoring and paper-trading dashboard with safety controls." />
+  <title>Cart4Click · Safer AI-assisted crypto monitoring</title>
+  <link rel="icon" type="image/png" href="/favicon.png?v=2" />
+  <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
+  <style>
+    .landing { max-width: 980px; margin: 0 auto; padding: 26px 18px 48px; }
+    .landing-hero { padding: 34px 28px; background: linear-gradient(135deg, #172554, #121826 55%); border: 1px solid #263b72; border-radius: 16px; }
+    .landing-eyebrow { color: #93c5fd; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
+    .landing h1 { font-size: clamp(30px, 6vw, 54px); line-height: 1.05; margin: 10px 0 14px; }
+    .landing h2 { margin-top: 0; font-size: 21px; }
+    .landing p { color: var(--muted); line-height: 1.65; }
+    .landing-hero p { max-width: 680px; font-size: 16px; }
+    .landing-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 22px; }
+    .landing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 18px 0; }
+    .landing-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .landing-card h3 { color: var(--text); font-size: 14px; }
+    .landing-card p { font-size: 13px; margin-bottom: 0; }
+    .landing-section { margin-top: 28px; }
+    .landing-section ul { color: var(--muted); line-height: 1.75; padding-left: 22px; }
+    .landing-warning { border-color: #8a6800; background: #3f3000; }
+    .landing-footer { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 18px; font-size: 12px; }
+    .landing-footer a { color: #93c5fd; margin-right: 16px; }
+    @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } }
+  </style>
+</head>
+<body>
+  <main class="landing">
+    <section class="landing-hero">
+      <div class="landing-eyebrow">CART4CLICK · AI CRYPTO TRADER</div>
+      <h1>Monitor markets with clearer guardrails.</h1>
+      <p>Cart4Click combines live crypto market data, forecasts, news, indicators, and an AI assistant in one dashboard. Start in paper-trading mode, understand the signals, and keep control of every action.</p>
+      <div class="landing-actions">
+        <a class="btn primary" href="/login.html">Sign in securely</a>
+        <a class="btn" href="#safety">Review safety controls</a>
+      </div>
+    </section>
+
+    <section class="landing-grid" aria-label="Product features">
+      <article class="landing-card"><h3>Market intelligence</h3><p>Track prices, candles, watchlists, technical indicators, sentiment, news, and upcoming crypto events.</p></article>
+      <article class="landing-card"><h3>AI-assisted decisions</h3><p>Use forecasts and an AI assistant to understand market context. AI output is information, not a guarantee.</p></article>
+      <article class="landing-card"><h3>Safety-first operation</h3><p>Paper trading, testnet support, order caps, confirmation flows, protected APIs, and automatic idle logout.</p></article>
+    </section>
+
+    <section id="safety" class="landing-section landing-card landing-warning">
+      <h2>Safety and risk information</h2>
+      <p>Crypto trading is volatile and can result in partial or total loss. Cart4Click does not provide financial advice and cannot guarantee accuracy, profit, uptime, or execution results.</p>
+      <ul>
+        <li>Use DRY RUN or TESTNET mode while learning and validating settings.</li>
+        <li>Never share your OTP, API credentials, or account access.</li>
+        <li>Review symbols, limits, and trade confirmations before enabling live trading.</li>
+        <li>API credentials should have withdrawals disabled and only the permissions you need.</li>
+      </ul>
+    </section>
+
+    <section class="landing-section landing-card">
+      <h2>Privacy</h2>
+      <p>Cart4Click uses Supabase Auth for passwordless email sign-in. Authentication tokens and private provider credentials are not intended to be published in the frontend. Public market data may be fetched from exchange and news providers.</p>
+    </section>
+
+    <section class="landing-section landing-card">
+      <h2>Terms</h2>
+      <p>By using Cart4Click, you accept responsibility for your account, configuration, trading decisions, and any resulting losses. The service is provided for informational and educational use and may be changed or unavailable without notice.</p>
+    </section>
+
+    <footer class="landing-footer">
+      <a href="/login.html">Sign in</a>
+      <a href="#safety">Risk and safety</a>
+      <span class="muted">Cart4Click · AI Crypto Trader</span>
+    </footer>
+  </main>
+</body>
+</html>

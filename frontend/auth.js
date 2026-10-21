@@ -2,7 +2,9 @@
 (() => {
   let client;
   let idleTimer;
+  let idleWarningTimer;
   const IDLE_TIMEOUT_MS = 3 * 60 * 1000;
+  const IDLE_WARNING_MS = IDLE_TIMEOUT_MS - 30 * 1000;
   const ACTIVITY_EVENTS = ["pointerdown", "keydown", "touchstart", "scroll", "mousemove"];
 
   function configured() {
@@ -64,6 +66,12 @@
 
   function resetIdleTimer() {
     clearTimeout(idleTimer);
+    clearTimeout(idleWarningTimer);
+    const warning = document.getElementById("idle-warning");
+    if (warning) warning.hidden = true;
+    idleWarningTimer = setTimeout(() => {
+      if (warning) warning.hidden = false;
+    }, IDLE_WARNING_MS);
     idleTimer = setTimeout(() => {
       void logout();
     }, IDLE_TIMEOUT_MS);
