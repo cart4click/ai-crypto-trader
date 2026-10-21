@@ -104,7 +104,8 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 
 .actions { display: flex; gap: 5px; flex-shrink: 0; align-items: center; }
 .actions button.btn { padding: 5px 9px; font-size: 11px; }
-.actions #account-link { margin-right: 12px; }
+.account-menu { display: flex; flex-direction: column; align-items: center; gap: 2px; margin-right: 7px; }
+.account-email { max-width: 190px; overflow: hidden; color: var(--muted); font-size: 9px; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
 
 /* AI Provider Status */
 .ai-provider-card {
@@ -664,6 +665,9 @@ width: 42px;
     text-align: center;
     white-space: nowrap;
   }
+  .account-menu { flex: 1 1 auto; min-width: 0; margin: 0; }
+  .account-menu #account-link { width: 100%; }
+  .account-email { max-width: 100%; }
   .conn {
     grid-column: 1 / -1;
     grid-row: 2;

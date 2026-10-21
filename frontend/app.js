@@ -48,12 +48,21 @@ let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 const accountLink = $("#account-link");
+const accountEmail = $("#account-email");
 function renderAccountLink() {
   if (!accountLink) return;
   accountLink.textContent = "Sign out";
   accountLink.onclick = () => { void window.C4CAuth.logout(); };
 }
+function renderAccountEmail(user) {
+  if (!accountEmail) return;
+  const email = user?.email;
+  accountEmail.textContent = email ? `Signed in as ${email}` : "";
+  accountEmail.hidden = !email;
+}
 renderAccountLink();
+document.addEventListener("c4c:authenticated", event => renderAccountEmail(event.detail?.user));
+void window.C4CAuth.getVerifiedUser().then(renderAccountEmail).catch(() => {});
 
 function loadChartDrawings(symbol) {
   chartDrawingKey = `chart-drawings:${symbol}:${chartInterval}`;
