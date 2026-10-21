@@ -22,6 +22,16 @@
     </a>
   </header>
   <main class="login-main">
+    <aside class="login-info login-info-left" aria-labelledby="login-info-title">
+      <div class="login-info-eyebrow">BEFORE YOU SIGN IN</div>
+      <h2 id="login-info-title">Market context in one place</h2>
+      <p>Cart4Click brings together the information you need to understand crypto markets before taking action.</p>
+      <ul>
+        <li>Live prices, candles, watchlists, and indicators</li>
+        <li>News, sentiment, and upcoming crypto events</li>
+        <li>AI-assisted forecasts and explanations</li>
+      </ul>
+    </aside>
     <section class="login-card card" aria-labelledby="login-title">
       <div class="login-eyebrow">SECURE EMAIL SIGN-IN</div>
       <h1 id="login-title">Sign in or create an account</h1>
@@ -49,6 +59,22 @@
       <div id="login-message" class="login-message" role="status" aria-live="polite" hidden></div>
       <p class="login-footnote">Codes expire according to your Supabase Auth settings. Never share a verification code.</p>
     </section>
+    <aside class="login-info login-info-right" aria-labelledby="login-safety-title">
+      <div class="login-info-eyebrow">SAFETY FIRST</div>
+      <h2 id="login-safety-title">Start with guardrails</h2>
+      <p>Your account is designed for learning and monitoring before live decisions.</p>
+      <ul>
+        <li>Use DRY RUN or TESTNET while learning</li>
+        <li>Keep exchange withdrawals disabled</li>
+        <li>Review limits and confirmations carefully</li>
+        <li>Sessions sign out after three minutes idle</li>
+      </ul>
+    </aside>
+    <div class="login-trust-strip" aria-label="Privacy and risk information">
+      <span><b>Privacy:</b> Your OTP and account session stay protected by Supabase Auth.</span>
+      <span><b>Risk:</b> Crypto trading is volatile and can result in partial or total loss.</span>
+      <a href="/landing.html#safety">Review full safety information</a>
+    </div>
   </main>
 </body>
 </html>
