@@ -9,6 +9,13 @@
   <link rel="stylesheet" href="/style.css?v=public-crypto-calendars" />
   <style>
     .landing { display: block; max-width: 1440px; margin: 0 auto; padding: 18px 18px 48px; }
+    .landing-splash { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at center, #172554 0%, #0b0f17 58%, #070a10 100%); animation: landing-splash-exit 900ms ease 1.15s forwards; pointer-events: none; }
+    .landing-splash-inner { display: grid; justify-items: center; gap: 14px; animation: landing-logo-intro 1.45s cubic-bezier(.2,.8,.2,1) forwards; }
+    .landing-splash img { width: clamp(132px, 22vw, 220px); height: clamp(132px, 22vw, 220px); border-radius: 28%; object-fit: cover; box-shadow: 0 0 0 1px rgba(147,197,253,.35), 0 0 70px rgba(59,130,246,.42); }
+    .landing-splash-title { color: #f8fafc; font-size: clamp(18px, 3vw, 28px); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .landing-splash-subtitle { color: #93c5fd; font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+    @keyframes landing-logo-intro { 0% { opacity: 0; transform: scale(.72); } 35% { opacity: 1; transform: scale(1.04); } 62% { transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
+    @keyframes landing-splash-exit { 0% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
     .landing-topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
     .landing-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 750; text-decoration: none; }
     .landing-brand small { color: var(--muted); font-weight: 400; }
@@ -62,9 +69,17 @@
     .landing-footer a { color: #93c5fd; margin-right: 16px; }
     @media (max-width: 1120px) { .landing-columns { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr); } .live-news-panel { grid-column: 1 / -1; position: static; } .live-news-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } .landing-columns { display: flex; flex-direction: column; } .landing-center { order: 1; width: 100%; } .live-market-panel { order: 2; position: static; width: 100%; } .live-news-panel { order: 3; width: 100%; } .live-news-list { grid-template-columns: 1fr; } }
+    @media (prefers-reduced-motion: reduce) { .landing-splash, .landing-splash-inner { animation-duration: 1ms; animation-delay: 0ms; } }
   </style>
 </head>
 <body>
+  <div class="landing-splash" aria-hidden="true">
+    <div class="landing-splash-inner">
+      <img src="/ai-crypto-trader.png" alt="" />
+      <div class="landing-splash-title">Cart4Click</div>
+      <div class="landing-splash-subtitle">Safer AI-assisted crypto monitoring</div>
+    </div>
+  </div>
   <main class="landing">
     <div class="landing-topbar">
       <a class="landing-brand" href="/" aria-label="Cart4Click home"><img src="/ai-crypto-trader.png" alt="" /><span>AI Crypto Trader <small>· C4C</small></span></a>
