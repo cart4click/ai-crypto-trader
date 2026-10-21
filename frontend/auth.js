@@ -47,7 +47,8 @@
     try {
       const user = await getVerifiedUser();
       if (!user) {
-        location.replace(loginUrl());
+        const isPublicEntry = location.pathname === "/" || location.pathname === "/index.html";
+        location.replace(isPublicEntry ? "/landing.html" : loginUrl());
         return null;
       }
       document.documentElement.classList.remove("auth-pending");
