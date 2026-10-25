@@ -1601,17 +1601,13 @@ async function renderPublicMarketChart(symbol) {
   if (!window.Chart) throw new Error("Chart library did not load. Reload the page to try again.");
   if (!/^[A-Z0-9]{5,20}$/.test(symbol)) throw new Error("Invalid market symbol.");
 
-  const dashboardIntervals = ["15m", "30m", "1h", "4h"];
-  const intervals = [...new Set([...dashboardIntervals, chartInterval])];
-  const fetched = await Promise.allSettled(intervals.map(interval => fetchBinanceCandles(symbol, interval, 168)));
-  const candleData = Object.fromEntries(fetched.map((result, index) => [
-    intervals[index], result.status === "fulfilled" ? result.value : null,
-  ]));
-  const candles = candleData[chartInterval];
-  if (!candles?.length) throw new Error(`No ${chartInterval} candle data is available for ${symbol}.`);
+  // Draw the selected market as soon as its own candles arrive. Extra
+  // intervals are only needed by Supertrend and must not block first paint.
+  const candles = await fetchBinanceCandles(symbol, chartInterval, 168);
+  const candleData = { [chartInterval]: candles };
+  if (!candles.length) throw new Error(`No ${chartInterval} candle data is available for ${symbol}.`);
   if (symbol !== selected) return;
 
-  await refreshSupertrendDashboard(symbol, candleData);
   renderIndicatorReadouts(candles);
   const labels = candles.map(candle => new Date(candle.time).toLocaleString("en-US", {
     month: "short", day: "numeric", hour: "2-digit", minute: chartInterval.endsWith("m") ? "2-digit" : undefined,
@@ -1665,6 +1661,7 @@ async function renderPublicMarketChart(symbol) {
   $("#market-updated").textContent = `Live price: every second · candles refresh each minute`;
   startMarketStream(symbol, chartInterval);
   setChartMessage("");
+  if (activeIndicators.includes("supertrend")) void refreshSupertrendDashboard(symbol, candleData);
 }
 
 const BINANCE_INTERVAL_MS = { "15m": 900000, "30m": 1800000, "1h": 3600000, "4h": 14400000, "1d": 86400000 };
