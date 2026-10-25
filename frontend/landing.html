@@ -16,13 +16,13 @@
     .landing-splash-subtitle { color: #93c5fd; font-size: 11px; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
     @keyframes landing-logo-intro { 0% { opacity: 0; transform: scale(.72); } 35% { opacity: 1; transform: scale(1.04); } 62% { transform: scale(1); } 100% { opacity: 1; transform: scale(1); } }
     @keyframes landing-splash-exit { 0% { opacity: 1; visibility: visible; } 100% { opacity: 0; visibility: hidden; } }
-    .landing-topbar { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+    .landing-topbar { position: relative; display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin-bottom: 16px; }
     .landing-brand { display: inline-flex; align-items: center; gap: 10px; color: var(--text); font-size: 13px; font-weight: 750; text-decoration: none; }
     .landing-brand small { color: var(--muted); font-weight: 400; }
     .landing-brand img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
     .landing-topbar a { display: inline-flex; align-items: center; min-height: 36px; padding: 8px 14px; border: 1px solid #60a5fa; border-radius: 8px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.22); }
     .landing-topbar a:hover, .landing-topbar a:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
-    .landing-top-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+    .landing-top-actions { position: absolute; top: 0; left: 50%; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; transform: translateX(-50%); }
     .landing-top-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 220px; min-height: 46px; padding: 12px 20px; border: 1px solid #60a5fa; border-radius: 9px; color: #fff; background: #2563eb; font-size: 14px; font-weight: 800; text-decoration: none; box-shadow: 0 5px 18px rgba(37,99,235,.25); }
     .landing-top-actions .btn:hover, .landing-top-actions .btn:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
     .landing-top-actions .btn.landing-guest { border-color: #38bdf8; background: #0e7490; }
@@ -76,7 +76,7 @@
     .landing-footer { border-top: 1px solid var(--border); margin-top: 32px; padding-top: 18px; font-size: 12px; }
     .landing-footer a { color: #93c5fd; margin-right: 16px; }
     @media (max-width: 1120px) { .landing-columns { grid-template-columns: minmax(170px, 210px) minmax(0, 1fr); } .live-news-panel { grid-column: 1 / -1; position: static; } .live-news-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-    @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } .landing-columns { display: flex; flex-direction: column; } .landing-center { order: 1; width: 100%; } .live-market-panel { order: 2; position: static; width: 100%; } .live-news-panel { order: 3; width: 100%; } .live-news-list { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .landing-grid { grid-template-columns: 1fr; } .landing-hero { padding: 24px 20px; } .landing-topbar { display: grid; gap: 10px; } .landing-top-actions { position: static; justify-content: flex-start; transform: none; } .landing-columns { display: flex; flex-direction: column; } .landing-center { order: 1; width: 100%; } .live-market-panel { order: 2; position: static; width: 100%; } .live-news-panel { order: 3; width: 100%; } .live-news-list { grid-template-columns: 1fr; } }
     @media (prefers-reduced-motion: reduce) { .landing-splash, .landing-splash-inner { animation-duration: 1ms; animation-delay: 0ms; } }
   </style>
 </head>
