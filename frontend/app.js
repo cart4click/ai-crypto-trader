@@ -1740,18 +1740,41 @@ function safeNewsUrl(value) {
 
 async function fetchGoogleNewsFeed(query, limit = 10) {
   const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
-  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
-  const response = await fetch(proxyUrl, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Google News returned HTTP ${response.status}.`);
-  const xml = new DOMParser().parseFromString(await response.text(), "application/xml");
-  if (xml.querySelector("parsererror")) throw new Error("Google News feed could not be parsed.");
-  return [...xml.querySelectorAll("item")].slice(0, limit).map(item => ({
-    title: cleanNewsText(item.querySelector("title")?.textContent || "Crypto event headline"),
-    summary: cleanNewsText(item.querySelector("description")?.textContent || ""),
-    url: item.querySelector("link")?.textContent || "https://news.google.com/",
-    source: cleanNewsText(item.querySelector("source")?.textContent || "Google News"),
-    published: item.querySelector("pubDate")?.textContent || "",
-  }));
+  const localFeed = await fetch("/public-feed.json", { cache: "no-store" }).then(response => response.ok ? response.json() : null).catch(() => null);
+  const localItems = query.includes("upcoming") ? localFeed?.events : localFeed?.news;
+  if (Array.isArray(localItems) && localItems.length) return localItems.slice(0, limit);
+  const proxyUrls = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`,
+    `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`,
+  ];
+  for (const proxyUrl of proxyUrls) {
+    try {
+      const response = await fetch(proxyUrl, { cache: "no-store" });
+      if (!response.ok) continue;
+      const body = await response.text();
+      if (proxyUrl.includes("rss2json")) {
+        const feed = JSON.parse(body);
+        if (feed.status !== "ok") continue;
+        return (feed.items || []).slice(0, limit).map(item => ({
+          title: cleanNewsText(item.title || "Crypto event headline"),
+          summary: cleanNewsText(item.description || item.content || ""),
+          url: item.link || "https://news.google.com/",
+          source: cleanNewsText(item.author || "Google News"),
+          published: item.pubDate || "",
+        }));
+      }
+      const xml = new DOMParser().parseFromString(body, "application/xml");
+      if (xml.querySelector("parsererror")) continue;
+      return [...xml.querySelectorAll("item")].slice(0, limit).map(item => ({
+        title: cleanNewsText(item.querySelector("title")?.textContent || "Crypto event headline"),
+        summary: cleanNewsText(item.querySelector("description")?.textContent || ""),
+        url: item.querySelector("link")?.textContent || "https://news.google.com/",
+        source: cleanNewsText(item.querySelector("source")?.textContent || "Google News"),
+        published: item.querySelector("pubDate")?.textContent || "",
+      }));
+    } catch { /* Try the next provider or the next local deployment snapshot. */ }
+  }
+  throw new Error("Public news feed is temporarily unavailable.");
 }
 
 function newsCoins(item) {
@@ -1816,14 +1839,14 @@ async function refreshCryptoEvents() {
   const box = $("#crypto-events-list");
   if (!box) return;
   try {
-    const events = await fetchGoogleNewsFeed("crypto upcoming event token unlock mainnet listing conference", 5);
+      const events = await fetchGoogleNewsFeed("crypto upcoming event token unlock mainnet listing conference", 5);
     box.innerHTML = events.length ? events.map(event => {
       const url = safeNewsUrl(event.url) || "https://news.google.com/";
       return `<article class="crypto-event-item"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(event.title)}</a><small>${esc(event.source)} · ${esc(newsAge(event.published) || "recent")}</small></article>`;
     }).join("") : '<div class="muted small">No event headlines are available right now.</div>';
   } catch (error) {
     console.warn("crypto events:", error.message);
-    box.innerHTML = '<div class="muted small">Event headlines are temporarily unavailable. Use the public calendars below.</div>';
+    box.innerHTML = '<div class="muted small">No verified event headlines are available right now. The panel will refresh automatically.</div>';
   }
 }
 

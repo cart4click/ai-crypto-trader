@@ -3,6 +3,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
 permissions:
   contents: read
   pages: write
@@ -41,6 +43,8 @@ jobs:
           # login loop after a successful Pages build.
           sed -i "s|auth.js|auth.js?v=${GITHUB_SHA}|g" frontend/*.html
       - uses: actions/configure-pages@v5
+      - name: Build public news and event snapshot
+        run: python3 scripts/build_public_feeds.py
       - uses: actions/upload-pages-artifact@v3
         with:
           path: frontend
