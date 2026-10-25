@@ -312,7 +312,6 @@ const DASHBOARD_PANEL_LABELS = {
   wallet: "Wallet",
   watchlist: "Watchlist",
   sentiment: "Market sentiment",
-  risk: "Risk radar",
   chart: "Market chart",
   notes: "Market notes",
   forecast: "AI forecast",
@@ -345,7 +344,7 @@ function renderDashboardLayout(user = signedInUser) {
   if (!customizeButton || !modal || !options) return;
   customizeButton.hidden = !user;
   if (!user) {
-    document.querySelectorAll("[data-dashboard-panel]").forEach(panel => { panel.hidden = ["wallet", "risk"].includes(panel.dataset.dashboardPanel); });
+    document.querySelectorAll("[data-dashboard-panel]").forEach(panel => { panel.hidden = panel.dataset.dashboardPanel === "wallet"; });
     modal.hidden = true;
     return;
   }
@@ -451,7 +450,6 @@ function syncDashboardPreferences(user) {
   renderPriceAlerts();
   renderIndicatorControls();
   renderAdvancedChartTools();
-  renderRiskRadar();
   renderDashboardLayout(user);
 }
 
@@ -465,37 +463,6 @@ function renderAdvancedChartTools() {
   const options = localWatchlist.filter(symbol => symbol !== selected);
   compare.innerHTML = `<option value="">Select market…</option>${options.map(symbol => `<option value="${esc(symbol)}">${esc(symbol.replace("USDT", ""))}/USDT</option>`).join("")}`;
   compare.value = options.includes(chartTools.compare) ? chartTools.compare : "";
-}
-
-function renderRiskRadar() {
-  const panel = document.querySelector('[data-dashboard-panel="risk"]');
-  const box = $("#risk-radar-box");
-  const levelBox = $("#risk-radar-level");
-  if (!panel || !box || !levelBox) return;
-  panel.hidden = !signedInUser;
-  if (!signedInUser) return;
-  const markets = Object.values(coinsCache).filter(coin => Number.isFinite(Number(coin.change_24h_pct)));
-  if (!markets.length) {
-    box.innerHTML = '<span class="muted small">Loading your market risk view…</span>';
-    levelBox.textContent = "Loading";
-    levelBox.className = "risk-level loading";
-    return;
-  }
-  const held = markets.filter(coin => Number(coin.qty) > 0 && Number(coin.price) > 0);
-  const totalValue = held.reduce((sum, coin) => sum + Number(coin.qty) * Number(coin.price), 0);
-  const concentration = totalValue ? Math.max(...held.map(coin => Number(coin.qty) * Number(coin.price))) / totalValue : 0;
-  const avgMove = markets.reduce((sum, coin) => sum + Math.abs(Number(coin.change_24h_pct)), 0) / markets.length;
-  const directionCount = markets.filter(coin => Number(coin.change_24h_pct) >= 0).length;
-  const directionOverlap = Math.max(directionCount, markets.length - directionCount) / markets.length;
-  const score = (concentration > .7 ? 2 : concentration > .45 ? 1 : 0) + (avgMove > 6 ? 2 : avgMove > 3 ? 1 : 0) + (directionOverlap > .85 ? 1 : 0);
-  const level = score >= 4 ? "High" : score >= 2 ? "Moderate" : "Lower";
-  levelBox.textContent = level;
-  levelBox.className = `risk-level ${level.toLowerCase()}`;
-  const concentrationText = totalValue ? `${Math.round(concentration * 100)}% in largest holding` : "No held positions yet";
-  box.innerHTML = `
-    <div class="risk-metric"><span>Concentration</span><b>${esc(concentrationText)}</b></div>
-    <div class="risk-metric"><span>24h movement</span><b>${avgMove.toFixed(2)}% average</b></div>
-    <div class="risk-metric"><span>Market overlap</span><b>${Math.round(directionOverlap * 100)}% moving the same way</b></div>`;
 }
 
 function persistChartTools() {
@@ -686,7 +653,6 @@ async function refreshCoins(forceMarket = false) {
     $("#sel-price").textContent = "—";
   }
   if (selected && selected !== prevSelected) refreshForecast();
-  renderRiskRadar();
 }
 
 async function refreshPublicWatchlist(force = false) {
