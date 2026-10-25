@@ -21,6 +21,7 @@ const INDICATOR_OPTIONS = {
 const INDICATORS_KEY = "market-indicators";
 let activeIndicators = [];
 let marketRefreshInFlight = false;
+let marketRefreshQueued = false;
 let forecastApiUnavailable = false;
 let marketStream = null;
 let marketStreamKey = "";
@@ -2179,7 +2180,10 @@ $("#btn-ai-status").addEventListener("click", () => {
 
 /* --------------------------------------------------------------------- boot */
 async function refreshMarket(force = false) {
-  if (marketRefreshInFlight) return;
+  if (marketRefreshInFlight) {
+    marketRefreshQueued = true;
+    return;
+  }
   marketRefreshInFlight = true;
   const button = $("#btn-market-refresh");
   if (button) { button.disabled = true; button.textContent = "↻ Refreshing…"; }
@@ -2189,6 +2193,10 @@ async function refreshMarket(force = false) {
   } finally {
     marketRefreshInFlight = false;
     if (button) { button.disabled = false; button.textContent = "↻ Refresh market"; }
+    if (marketRefreshQueued) {
+      marketRefreshQueued = false;
+      void refreshMarket(true);
+    }
   }
 }
 
