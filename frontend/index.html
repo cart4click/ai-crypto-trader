@@ -58,6 +58,7 @@
         </div>
         <div class="quick-add" id="quick-add"></div>
         <div id="coins-list" class="coins-list"><div class="muted small loading-state">Loading markets…</div></div>
+        <div id="watchlist-help" class="muted small" hidden>Signed-in workspace: drag a coin or use the arrows to reorder your saved watchlist.</div>
       </div>
 
       <div class="card" data-dashboard-panel="sentiment">
@@ -154,6 +155,17 @@
           <button id="btn-show-hidden-drawings" class="btn tiny" type="button" hidden>Show hidden</button>
           <button id="btn-clear-drawings" class="btn tiny" type="button">Clear drawings</button>
           <span id="drawing-status" class="muted small">Choose a tool, then draw or click the chart.</span>
+        </div>
+        <div id="advanced-chart-tools" class="advanced-chart-tools" hidden>
+          <span class="drawing-label">Advanced</span>
+          <button class="btn tiny" type="button" data-chart-tool="support">＋ Support</button>
+          <button class="btn tiny" type="button" data-chart-tool="resistance">＋ Resistance</button>
+          <button class="btn tiny" type="button" data-chart-tool="fibonacci">Fibonacci</button>
+          <label class="muted small" for="compare-symbol">Compare</label>
+          <select id="compare-symbol" class="market-select" aria-label="Compare another market">
+            <option value="">Select market…</option>
+          </select>
+          <span class="muted small">Tools are saved with your signed-in workspace.</span>
         </div>
         <details id="drawing-manager" class="drawing-manager">
           <summary>Drawing manager <span id="drawing-manager-count" class="muted small"></span></summary>

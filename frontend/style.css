@@ -220,6 +220,17 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .asset-news-coin { color: #bfdbfe; background: rgba(59,130,246,.16); border-radius: 5px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
 .asset-news-source { color: var(--muted); font-size: 10px; }
 .asset-news-title { font-size: 12px; line-height: 1.4; font-weight: 650; }
+.watchlist-move { display: inline-flex; gap: 3px; margin-left: auto; }
+.watchlist-move .btn { margin-top: 0; min-width: 24px; padding-inline: 5px; }
+.watch-card[draggable="true"] { cursor: grab; }
+.advanced-chart-tools {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
+  margin: 6px 0 8px; padding: 7px 8px;
+  border: 1px solid var(--border); border-radius: 7px; background: var(--card2);
+}
+.advanced-chart-tools[hidden] { display: none; }
+.advanced-chart-tools .btn { margin-top: 0; }
+.advanced-chart-tools .market-select { max-width: 140px; }
 .asset-news-title a { color: var(--text); text-decoration: none; }
 .asset-news-title a:hover { color: var(--blue); }
 .asset-news-summary { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 5px 0 0; overflow-wrap: anywhere; }

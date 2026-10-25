@@ -299,6 +299,7 @@ const DEFAULT_WATCHLIST = QUICK.map(base => `${base}USDT`);
 const PREVIOUS_EXPANDED_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"].map(base => `${base}USDT`);
 const PREVIOUS_COMPACT_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"].map(base => `${base}USDT`);
 const WATCHLIST_KEY = "ai-trader-watchlist";
+const CHART_TOOLS_KEY = "chart-tools-v1";
 const DASHBOARD_LAYOUT_KEY = "dashboard-layout-v1";
 const DASHBOARD_PANEL_LABELS = {
   wallet: "Wallet",
@@ -316,6 +317,7 @@ const DASHBOARD_PANEL_LABELS = {
 };
 const DEFAULT_DASHBOARD_LAYOUT = Object.fromEntries(Object.keys(DASHBOARD_PANEL_LABELS).map(key => [key, true]));
 let localWatchlist = DEFAULT_WATCHLIST.slice();
+let chartTools = { support: false, resistance: false, fibonacci: false, compare: "" };
 renderMarketNotes();
 let publicWatchlistPrices = {};
 let publicWatchlistFetchedAt = 0;
@@ -420,6 +422,7 @@ function syncDashboardPreferences(user) {
     localWatchlist = DEFAULT_WATCHLIST.slice();
     chartDrawings = [];
     chartDrawingKey = "";
+    chartTools = { support: false, resistance: false, fibonacci: false, compare: "" };
   } else {
     selected = localStorage.getItem(preferenceKey("selected_symbol")) || DEFAULT_WATCHLIST[0];
     chartStyle = localStorage.getItem(preferenceKey("market-chart-style")) === "candles" ? "candles" : "line";
@@ -428,6 +431,10 @@ function syncDashboardPreferences(user) {
     activeIndicators = readSavedIndicators();
     priceAlerts = readSavedAlerts();
     localWatchlist = loadLocalWatchlist();
+    try {
+      const savedTools = JSON.parse(localStorage.getItem(preferenceKey(CHART_TOOLS_KEY)) || "null");
+      if (savedTools && typeof savedTools === "object") chartTools = { ...chartTools, ...savedTools };
+    } catch { chartTools = { support: false, resistance: false, fibonacci: false, compare: "" }; }
     if (!localWatchlist.includes(selected)) selected = localWatchlist[0] || DEFAULT_WATCHLIST[0];
   }
   $("#chart-style").value = chartStyle;
@@ -435,7 +442,65 @@ function syncDashboardPreferences(user) {
   renderMarketNotes();
   renderPriceAlerts();
   renderIndicatorControls();
+  renderAdvancedChartTools();
   renderDashboardLayout(user);
+}
+
+function renderAdvancedChartTools() {
+  const tools = $("#advanced-chart-tools");
+  const help = $("#watchlist-help");
+  if (tools) tools.hidden = !signedInUser;
+  if (help) help.hidden = !signedInUser;
+  const compare = $("#compare-symbol");
+  if (!compare) return;
+  const options = localWatchlist.filter(symbol => symbol !== selected);
+  compare.innerHTML = `<option value="">Select market…</option>${options.map(symbol => `<option value="${esc(symbol)}">${esc(symbol.replace("USDT", ""))}/USDT</option>`).join("")}`;
+  compare.value = options.includes(chartTools.compare) ? chartTools.compare : "";
+}
+
+function persistChartTools() {
+  if (signedInUser) localStorage.setItem(preferenceKey(CHART_TOOLS_KEY), JSON.stringify(chartTools));
+}
+
+function addHorizontalTool(label, price, color) {
+  if (!signedInUser || !Number.isFinite(price)) return;
+  chartDrawings = chartDrawings.filter(drawing => drawing.label !== label);
+  chartDrawings.push({ type: "horizontal", price, color, label });
+  saveChartDrawings();
+  if (chart) chart.update("none");
+}
+
+function addFibonacciTool() {
+  const closes = (chart?.$indicatorCandles || []).map(candle => Number(candle.close)).filter(Number.isFinite).slice(-80);
+  if (!signedInUser || closes.length < 2) return;
+  const high = Math.max(...closes);
+  const low = Math.min(...closes);
+  const range = high - low;
+  if (!range) return;
+  chartDrawings = chartDrawings.filter(drawing => !String(drawing.label || "").startsWith("Fib "));
+  [[0, high], [0.382, high - range * .382], [0.5, high - range * .5], [0.618, high - range * .618], [1, low]].forEach(([ratio, price]) => {
+    chartDrawings.push({ type: "horizontal", price, color: ratio === 0 || ratio === 1 ? "#f59e0b" : "#a855f7", label: `Fib ${Math.round(ratio * 100)}%` });
+  });
+  saveChartDrawings();
+  if (chart) chart.update("none");
+}
+
+async function updateComparisonSeries() {
+  if (!chart || !signedInUser || !chartTools.compare || chartTools.compare === selected) return;
+  const compareSymbol = chartTools.compare;
+  try {
+    const candles = await fetchBinanceCandles(compareSymbol, chartInterval, 168);
+    if (compareSymbol !== chartTools.compare || selected !== chart.$selectedSymbol) return;
+    const base = (chart.$indicatorCandles || []).map(candle => Number(candle.close)).filter(Number.isFinite);
+    const compareCloses = candles.map(candle => candle.close);
+    const baseStart = base[0];
+    const compareStart = compareCloses[0];
+    if (!baseStart || !compareStart) return;
+    const normalized = compareCloses.map(value => value / compareStart * baseStart);
+    chart.data.datasets = chart.data.datasets.filter(dataset => !dataset.$comparison);
+    chart.data.datasets.push({ label: `${compareSymbol} · relative`, data: normalized, borderColor: "#f59e0b", borderDash: [5, 3], borderWidth: 2, pointRadius: 0, tension: .2, $comparison: true });
+    chart.update("none");
+  } catch (error) { toast(`Comparison unavailable: ${error.message}`, true); }
 }
 
 /* ------------------------------------------------------------------ helpers */
@@ -613,12 +678,14 @@ async function refreshPublicWatchlist(force = false) {
   box.innerHTML = localWatchlist.map(symbol => {
     const market = publicWatchlistPrices[symbol];
     const base = symbol.slice(0, -4);
-    return `<div class="coin-card watch-card ${symbol === selected ? "selected" : ""}" data-sym="${esc(symbol)}">
+    return `<div class="coin-card watch-card ${symbol === selected ? "selected" : ""}" data-sym="${esc(symbol)}" ${signedInUser ? 'draggable="true"' : ""}>
       <div class="coin-top"><b>${esc(base)} / USDT</b><span class="coin-price">${market ? fmtMarketPrice(market.price) : "—"}</span></div>
       <div class="coin-sub"><span class="${cls(market?.change_24h_pct ?? 0)}">${fmtPct(market?.change_24h_pct)} 24h</span>
+        ${signedInUser ? `<span class="watchlist-move"><button class="btn tiny" data-act="move-watch-up" title="Move ${esc(symbol)} up">↑</button><button class="btn tiny" data-act="move-watch-down" title="Move ${esc(symbol)} down">↓</button></span>` : ""}
         <button class="btn tiny" data-act="remove-watch" title="Remove ${esc(symbol)} from watchlist">Remove</button></div>
     </div>`;
   }).join("");
+  renderAdvancedChartTools();
 }
 
 function coinCard(c) {
@@ -687,6 +754,16 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
         setChartMessage("Add a coin to load its live market chart.");
       }
       toast(`${sym} removed from watchlist`);
+    } else if (act === "move-watch-up" || act === "move-watch-down") {
+      if (!await requireActionSignIn()) return;
+      const index = localWatchlist.indexOf(sym);
+      const next = act === "move-watch-up" ? index - 1 : index + 1;
+      if (index < 0 || next < 0 || next >= localWatchlist.length) return;
+      [localWatchlist[index], localWatchlist[next]] = [localWatchlist[next], localWatchlist[index]];
+      saveLocalWatchlist();
+      renderAdvancedChartTools();
+      await refreshPublicWatchlist(true);
+      toast("Watchlist order saved");
     } else if (act === "save") {
       if (!await requireActionSignIn()) return;
       const fields = {};
@@ -713,6 +790,32 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
     }
     await refreshCoins();
   } catch (e) { toast(e.message, true); }
+});
+let draggedWatchSymbol = "";
+$("#coins-list")?.addEventListener("dragstart", event => {
+  const card = event.target.closest('.watch-card[draggable="true"]');
+  if (!signedInUser || !card) return;
+  draggedWatchSymbol = card.dataset.sym;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", draggedWatchSymbol);
+});
+$("#coins-list")?.addEventListener("dragover", event => {
+  if (signedInUser && event.target.closest('.watch-card[draggable="true"]')) event.preventDefault();
+});
+$("#coins-list")?.addEventListener("drop", async event => {
+  event.preventDefault();
+  const target = event.target.closest('.watch-card[draggable="true"]');
+  const sourceSymbol = draggedWatchSymbol || event.dataTransfer.getData("text/plain");
+  if (!signedInUser || !target || !sourceSymbol || sourceSymbol === target.dataset.sym) return;
+  const from = localWatchlist.indexOf(sourceSymbol);
+  const to = localWatchlist.indexOf(target.dataset.sym);
+  if (from < 0 || to < 0) return;
+  localWatchlist.splice(from, 1);
+  localWatchlist.splice(to, 0, sourceSymbol);
+  saveLocalWatchlist();
+  await refreshPublicWatchlist(true);
+  toast("Watchlist order saved");
+  draggedWatchSymbol = "";
 });
 
 async function addCoin(sym) {
@@ -1213,6 +1316,7 @@ function renderChart(f) {
   else chart = new Chart($("#chart"), cfg);
   chart.$publicCandles = null;
   chart.$marketCandles = null;
+  chart.$selectedSymbol = selected;
   chart.$historyCandleIndex = H - 1;
   chart.$historyCandleOpenTime = Number(f.history_times?.at(-1));
   chart.$historyIntervalMs = ({ "15m": 900000, "30m": 1800000, "1h": 3600000, "4h": 14400000, "1d": 86400000 })[chartInterval] || 3600000;
@@ -1225,6 +1329,7 @@ function renderChart(f) {
   $("#market-updated").textContent = `Live price: every second · candles refresh each minute`;
   startMarketStream(selected, chartInterval);
   setChartMessage("");
+  void updateComparisonSeries();
 }
 
 const candlestickOverlay = {
@@ -1683,6 +1788,7 @@ async function renderPublicMarketChart(symbol) {
   else chart = new Chart($("#chart"), cfg);
   chart.$publicCandles = candles;
   chart.$marketCandles = chartStyle === "candles" ? candles : null;
+  chart.$selectedSymbol = symbol;
   chart.$indicatorCandles = candles;
   chart.$dashboardCandles = candleData;
   chart.$isPublicMarket = true;
@@ -2268,6 +2374,34 @@ $("#chart-interval").addEventListener("change", async (event) => {
   chartInterval = CHART_INTERVALS.includes(event.target.value) ? event.target.value : "1h";
   localStorage.setItem(preferenceKey("market-chart-interval"), chartInterval);
   refreshMarket(true);
+});
+document.querySelectorAll("[data-chart-tool]").forEach(button => button.addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
+  const closes = (chart?.$indicatorCandles || []).map(candle => Number(candle.close)).filter(Number.isFinite);
+  if (!closes.length) return;
+  const action = button.dataset.chartTool;
+  if (action === "support") {
+    chartTools.support = true;
+    addHorizontalTool("Support", Math.min(...closes.slice(-80)), "#22c55e");
+  } else if (action === "resistance") {
+    chartTools.resistance = true;
+    addHorizontalTool("Resistance", Math.max(...closes.slice(-80)), "#ef4444");
+  } else if (action === "fibonacci") {
+    chartTools.fibonacci = true;
+    addFibonacciTool();
+  }
+  persistChartTools();
+}));
+$("#compare-symbol")?.addEventListener("change", async event => {
+  if (!await requireActionSignIn()) { event.target.value = ""; return; }
+  chartTools.compare = event.target.value;
+  persistChartTools();
+  if (!chartTools.compare && chart) {
+    chart.data.datasets = chart.data.datasets.filter(dataset => !dataset.$comparison);
+    chart.update("none");
+  } else {
+    await updateComparisonSeries();
+  }
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));
 
