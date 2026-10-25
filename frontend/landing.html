@@ -22,6 +22,11 @@
     .landing-brand img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; }
     .landing-topbar a { display: inline-flex; align-items: center; min-height: 36px; padding: 8px 14px; border: 1px solid #60a5fa; border-radius: 8px; background: #2563eb; color: #fff; font-size: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 14px rgba(37,99,235,.22); }
     .landing-topbar a:hover, .landing-topbar a:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
+    .landing-top-actions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin: 0 auto 18px; }
+    .landing-top-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-width: 220px; min-height: 46px; padding: 12px 20px; border: 1px solid #60a5fa; border-radius: 9px; color: #fff; background: #2563eb; font-size: 14px; font-weight: 800; text-decoration: none; box-shadow: 0 5px 18px rgba(37,99,235,.25); }
+    .landing-top-actions .btn:hover, .landing-top-actions .btn:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
+    .landing-top-actions .btn.landing-guest { border-color: #38bdf8; background: #0e7490; }
+    .landing-top-actions .btn.landing-guest:hover, .landing-top-actions .btn.landing-guest:focus-visible { background: #0891b2; }
     .landing-hero { padding: 34px 28px; background: linear-gradient(135deg, #172554, #121826 55%); border: 1px solid #263b72; border-radius: 16px; }
     .landing-eyebrow { color: #93c5fd; font-size: 11px; font-weight: 800; letter-spacing: .12em; }
     .landing h1 { font-size: clamp(30px, 6vw, 54px); line-height: 1.05; margin: 10px 0 14px; }
@@ -86,7 +91,10 @@
   <main class="landing">
     <div class="landing-topbar">
       <a class="landing-brand" href="/" aria-label="Cart4Click home"><img src="/ai-crypto-trader.png" alt="" /><span>AI Crypto Trader <small>· C4C</small></span></a>
-      <a class="landing-topbar-signin" href="/login.html">Sign in</a>
+    </div>
+    <div class="landing-top-actions" aria-label="Dashboard access">
+      <a class="btn" href="/login.html">Sign in securely</a>
+      <a class="btn landing-guest" href="/index.html">Continue without signing in</a>
     </div>
     <div class="landing-columns">
       <aside class="live-panel live-market-panel" aria-labelledby="live-market-title">
@@ -99,11 +107,6 @@
       <div class="landing-eyebrow">CART4CLICK · AI CRYPTO TRADER</div>
       <h1>Monitor markets with clearer guardrails.</h1>
       <p>Cart4Click combines live crypto market data, forecasts, news, indicators, and an AI assistant in one dashboard. Start in paper-trading mode, understand the signals, and keep control of every action.</p>
-      <div class="landing-actions">
-        <a class="btn primary landing-signin" href="/login.html">Sign in securely</a>
-        <a class="btn landing-guest" href="/index.html">Continue without signing in</a>
-        <a class="btn landing-safety" href="#safety">Review safety controls</a>
-      </div>
       <p class="landing-guest-note">You can view the public dashboard without signing in. Sign in when you want to add indicators, alerts, drawings, notes, or change personal settings.</p>
       </section>
 

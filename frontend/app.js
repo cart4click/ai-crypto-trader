@@ -90,6 +90,13 @@ function renderAccountLink(user = signedInUser) {
   signedInUser = user || null;
   accountLink.textContent = signedInUser ? "Sign out" : "Sign in";
   accountLink.onclick = () => signedInUser ? void window.C4CAuth.logout() : loginForAction();
+  ["btn-bot", "btn-balances", "btn-report", "btn-customize-dashboard"].forEach(id => {
+    const control = $("#" + id);
+    if (control) {
+      control.hidden = !signedInUser;
+      control.classList.toggle("signed-in-control", Boolean(signedInUser));
+    }
+  });
 }
 function renderAccountEmail(user) {
   if (!accountEmail) return;
@@ -337,7 +344,7 @@ function renderDashboardLayout(user = signedInUser) {
   if (!customizeButton || !modal || !options) return;
   customizeButton.hidden = !user;
   if (!user) {
-    document.querySelectorAll("[data-dashboard-panel]").forEach(panel => { panel.hidden = false; });
+    document.querySelectorAll("[data-dashboard-panel]").forEach(panel => { panel.hidden = panel.dataset.dashboardPanel === "wallet"; });
     modal.hidden = true;
     return;
   }
