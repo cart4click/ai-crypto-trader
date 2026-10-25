@@ -31,6 +31,7 @@
       <button id="btn-bot" class="btn primary">▶ Start bot</button>
       <button id="btn-balances" class="btn">💰 Balances</button>
       <button id="btn-report" class="btn">📊 AI Report</button>
+      <button id="btn-customize-dashboard" class="btn" type="button" hidden>⚙ Customize</button>
     </div>
   </header>
 
@@ -42,12 +43,12 @@
   <main>
     <!-- LEFT: market + coins -->
     <section class="col left">
-      <div class="card">
+      <div class="card" data-dashboard-panel="wallet">
         <h3>💰 Wallet</h3>
         <div id="wallet-box"><span class="muted small">Loading...</span></div>
       </div>
       
-      <div class="card">
+      <div class="card" data-dashboard-panel="watchlist">
         <h3>Watchlist</h3>
         <div class="add-coin">
           <input id="new-symbol" placeholder="e.g. SOL, SOL/USDT or SOLUSDT" />
@@ -57,7 +58,7 @@
         <div id="coins-list" class="coins-list"><div class="muted small">No coins yet — add one above.</div></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-dashboard-panel="sentiment">
         <h3>Market sentiment</h3>
         <div id="sentiment-box" class="sentiment"><span class="muted">loading…</span></div>
         <div id="fear-greed" class="muted small"></div>
@@ -69,7 +70,7 @@
 
     <!-- CENTER: chart + forecast -->
     <section class="col center">
-      <div class="card">
+      <div class="card" data-dashboard-panel="chart">
         <div class="chart-head">
           <div>
             <h2 id="sel-symbol">—</h2>
@@ -162,23 +163,23 @@
         </div>
         <div id="ai-note" class="ai-note muted small"></div>
       </div>
-      <div class="card market-notes-card">
+      <div class="card market-notes-card" data-dashboard-panel="notes">
         <h3>📝 Market notes</h3>
         <p class="muted small">Sign in to save notes for the selected coin.</p>
         <textarea id="market-notes" rows="4" maxlength="4000" placeholder="Write your market notes, levels, or trade plan…" aria-label="Market notes"></textarea>
         <div class="market-notes-footer"><span id="market-notes-status" class="muted small" aria-live="polite">Select a coin to keep notes per market.</span><button id="btn-clear-market-notes" class="btn tiny" type="button">Clear note</button></div>
       </div>
-      <div class="card">
+      <div class="card" data-dashboard-panel="forecast">
         <h3>AI forecast — next 24h</h3>
         <div id="forecast-grid" class="fgrid"><span class="muted small">Select a coin.</span></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-dashboard-panel="advisor">
         <h3>🧠 AI advisor — multi-factor recommendation</h3>
         <div id="advice-box"><span class="muted small">Select a coin.</span></div>
       </div>
 
-      <div class="card">
+      <div class="card" data-dashboard-panel="provider">
         <h3>🤖 AI Provider Status</h3>
         <div id="ai-status-box"><span class="muted small">Loading...</span></div>
         <button id="btn-ai-status" class="btn tiny">↻ Refresh</button>
@@ -187,14 +188,14 @@
 
     <!-- RIGHT: AI news + pending -->
     <section class="col right">
-      <div class="card">
+      <div class="card" data-dashboard-panel="pending">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h3 style="margin: 0;">⏳ Pending confirmations</h3>
           <button id="btn-clear-pending" class="btn tiny">🗑️ Clear All</button>
         </div>
         <div id="pending-list"><div class="muted small">None.</div></div>
       </div>
-      <div class="card">
+      <div class="card" data-dashboard-panel="events">
         <h3>🪙 Upcoming crypto events</h3>
         <p class="muted small market-events-note">Live public event headlines — no API key is needed. Verify dates with the official calendar before acting.</p>
         <div id="crypto-events-list" class="crypto-events-list"><div class="muted small">Loading event headlines…</div></div>
@@ -208,7 +209,7 @@
         </div>
         <p class="muted small market-events-attribution">Events open on their source website, where you can check details and announcements.</p>
       </div>
-      <div class="card">
+      <div class="card" data-dashboard-panel="news">
         <h3>📰 News &amp; AI analysis</h3>
         <div id="news-list"><div class="muted small">loading…</div></div>
       </div>
@@ -216,7 +217,7 @@
   </main>
 
   <footer>
-    <div class="card">
+    <div class="card" data-dashboard-panel="trades">
       <h3>Trade log</h3>
       <table id="trades-table">
         <thead><tr><th>Time</th><th>Side</th><th>Coin</th><th>Qty</th><th>Price</th><th>Value</th><th>PnL</th><th>Mode</th><th>Decision</th></tr></thead>
@@ -224,6 +225,25 @@
       </table>
     </div>
   </footer>
+
+  <div id="dashboard-customizer" class="dashboard-customizer" hidden>
+    <div class="dashboard-customizer-backdrop" data-customizer-close></div>
+    <section class="dashboard-customizer-card" role="dialog" aria-modal="true" aria-labelledby="dashboard-customizer-title">
+      <div class="dashboard-customizer-head">
+        <div>
+          <p class="dashboard-customizer-eyebrow">PERSONAL WORKSPACE</p>
+          <h2 id="dashboard-customizer-title">Customize your dashboard</h2>
+        </div>
+        <button class="btn tiny" type="button" data-customizer-close aria-label="Close dashboard customization">✕</button>
+      </div>
+      <p class="muted small">Choose the panels you want to see. Your layout is saved for this signed-in account on this browser.</p>
+      <div id="dashboard-panel-options" class="dashboard-panel-options"></div>
+      <div class="dashboard-customizer-actions">
+        <button id="btn-reset-dashboard" class="btn" type="button">Reset layout</button>
+        <button id="btn-save-dashboard" class="btn primary" type="button">Save layout</button>
+      </div>
+    </section>
+  </div>
 
   <!-- Chat Interface -->
   <div id="chat-widget" class="chat-widget minimized">

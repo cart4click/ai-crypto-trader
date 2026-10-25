@@ -265,10 +265,78 @@ const DEFAULT_WATCHLIST = QUICK.map(base => `${base}USDT`);
 const PREVIOUS_EXPANDED_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"].map(base => `${base}USDT`);
 const PREVIOUS_COMPACT_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"].map(base => `${base}USDT`);
 const WATCHLIST_KEY = "ai-trader-watchlist";
+const DASHBOARD_LAYOUT_KEY = "dashboard-layout-v1";
+const DASHBOARD_PANEL_LABELS = {
+  wallet: "Wallet",
+  watchlist: "Watchlist",
+  sentiment: "Market sentiment",
+  chart: "Market chart",
+  notes: "Market notes",
+  forecast: "AI forecast",
+  advisor: "AI advisor",
+  provider: "AI provider status",
+  pending: "Pending confirmations",
+  events: "Upcoming crypto events",
+  news: "News and AI analysis",
+  trades: "Trade log",
+};
+const DEFAULT_DASHBOARD_LAYOUT = Object.fromEntries(Object.keys(DASHBOARD_PANEL_LABELS).map(key => [key, true]));
 let localWatchlist = DEFAULT_WATCHLIST.slice();
 renderMarketNotes();
 let publicWatchlistPrices = {};
 let publicWatchlistFetchedAt = 0;
+
+function readDashboardLayout() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DASHBOARD_LAYOUT_KEY) || "null");
+    if (!saved || typeof saved !== "object") return { ...DEFAULT_DASHBOARD_LAYOUT };
+    return Object.fromEntries(Object.keys(DEFAULT_DASHBOARD_LAYOUT).map(key => [key, saved[key] !== false]));
+  } catch { return { ...DEFAULT_DASHBOARD_LAYOUT }; }
+}
+
+function renderDashboardLayout(user = signedInUser) {
+  const customizeButton = $("#btn-customize-dashboard");
+  const modal = $("#dashboard-customizer");
+  const options = $("#dashboard-panel-options");
+  if (!customizeButton || !modal || !options) return;
+  customizeButton.hidden = !user;
+  if (!user) {
+    document.querySelectorAll("[data-dashboard-panel]").forEach(panel => { panel.hidden = false; });
+    modal.hidden = true;
+    return;
+  }
+  const layout = readDashboardLayout();
+  document.querySelectorAll("[data-dashboard-panel]").forEach(panel => {
+    panel.hidden = layout[panel.dataset.dashboardPanel] === false;
+  });
+  options.innerHTML = Object.entries(DASHBOARD_PANEL_LABELS).map(([key, label]) => `
+    <label class="dashboard-panel-option"><input type="checkbox" data-dashboard-panel-option="${key}" ${layout[key] ? "checked" : ""} /> <span>${label}</span></label>
+  `).join("");
+}
+
+function saveDashboardLayout() {
+  if (!signedInUser) return;
+  const layout = Object.fromEntries(Object.keys(DEFAULT_DASHBOARD_LAYOUT).map(key => [key, Boolean($("[data-dashboard-panel-option=\"" + key + "\"]")?.checked)]));
+  if (!Object.values(layout).some(Boolean)) layout.chart = true;
+  localStorage.setItem(DASHBOARD_LAYOUT_KEY, JSON.stringify(layout));
+  renderDashboardLayout(signedInUser);
+  $("#dashboard-customizer").hidden = true;
+}
+
+$("#btn-customize-dashboard")?.addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
+  renderDashboardLayout(signedInUser);
+  $("#dashboard-customizer").hidden = false;
+});
+document.querySelectorAll("[data-customizer-close]").forEach(button => button.addEventListener("click", () => {
+  $("#dashboard-customizer").hidden = true;
+}));
+$("#btn-save-dashboard")?.addEventListener("click", saveDashboardLayout);
+$("#btn-reset-dashboard")?.addEventListener("click", () => {
+  if (!signedInUser) return;
+  localStorage.removeItem(DASHBOARD_LAYOUT_KEY);
+  renderDashboardLayout(signedInUser);
+});
 
 function loadLocalWatchlist() {
   try {
@@ -333,6 +401,7 @@ function syncDashboardPreferences(user) {
   renderMarketNotes();
   renderPriceAlerts();
   renderIndicatorControls();
+  renderDashboardLayout(user);
 }
 
 /* ------------------------------------------------------------------ helpers */
