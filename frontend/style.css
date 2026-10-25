@@ -120,10 +120,15 @@ header {
 }
 @keyframes c4c-spin { to { transform: rotate(360deg); } }
 
-main { display: grid; grid-template-columns: 300px 1fr 340px; gap: 14px; padding: 14px 20px; }
+main { display: grid; grid-template-columns: 300px minmax(420px, 1fr) 340px; gap: 14px; padding: 14px 20px; }
 footer { padding: 0 20px 24px; }
 .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-@media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) and (min-width: 1024px) {
+  main { grid-template-columns: 250px minmax(0, 1fr) 280px; gap: 10px; padding-inline: 14px; }
+  .card { padding: 12px; }
+  .actions button.btn { padding-inline: 7px; }
+  .conn .pill { padding-inline: 6px; }
+}
 
 .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; }
 .muted { color: var(--muted); }
@@ -715,6 +720,16 @@ width: 42px;
   .center { grid-column: 1 / -1; grid-row: 1; }
   .left { grid-column: 1; grid-row: 2; }
   .right { grid-column: 2; grid-row: 2; }
+}
+
+/* iPad landscape and portrait: keep the chart prominent, then place market
+   context in two balanced columns below it. */
+@media (min-width: 681px) and (max-width: 1023px) {
+  header { padding-inline: 16px; }
+  .actions { flex-wrap: wrap; justify-content: flex-end; }
+  .actions button.btn { min-height: 32px; }
+  .chart-wrap { height: clamp(330px, 52vw, 470px); }
+  .card { padding: 13px; }
 }
 
 @media (max-width: 680px) {
