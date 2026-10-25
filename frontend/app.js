@@ -32,9 +32,11 @@ let priceAlerts = [];
 let coinsCache = {};
 let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
+const PUBLIC_DASHBOARD = document.documentElement.dataset.publicDashboard === "true";
 const accountLink = $("#account-link");
 const accountEmail = $("#account-email");
 let signedInUser = null;
+let authResolved = false;
 function loginForAction() {
   const target = `${location.pathname}${location.search}${location.hash}`;
   location.replace(`/login.html?returnTo=${encodeURIComponent(target)}&message=Sign in to use this feature.`);
@@ -63,15 +65,24 @@ function renderAccountEmail(user) {
 }
 renderAccountLink();
 document.addEventListener("c4c:authenticated", event => {
+  authResolved = true;
   renderAccountLink(event.detail?.user);
   renderAccountEmail(event.detail?.user);
   syncDashboardPreferences(event.detail?.user);
+  refreshMarket(true);
 });
 void window.C4CAuth.getVerifiedUser().then(user => {
+  authResolved = true;
   renderAccountLink(user);
   renderAccountEmail(user);
   syncDashboardPreferences(user);
-}).catch(() => { renderAccountLink(null); syncDashboardPreferences(null); });
+  refreshMarket(true);
+}).catch(() => {
+  authResolved = true;
+  renderAccountLink(null);
+  syncDashboardPreferences(null);
+  refreshMarket(true);
+});
 
 function loadChartDrawings(symbol) {
   if (!signedInUser) return [];
@@ -440,6 +451,10 @@ async function refreshStatus() {
 
 /* -------------------------------------------------------------------- coins */
 async function refreshCoins(forceMarket = false) {
+  if (PUBLIC_DASHBOARD && (!authResolved || !signedInUser)) {
+    await refreshPublicWatchlist(forceMarket);
+    return;
+  }
   let list;
   try { list = await api("/api/coins"); }
   catch (e) { await refreshPublicWatchlist(forceMarket); return; }
@@ -704,6 +719,11 @@ async function refreshForecast(refreshExtras = true) {
   const symbol = selected;
   renderPriceAlerts();
   if (!chart) setChartMessage("Loading live market chart…");
+  if (PUBLIC_DASHBOARD && (!authResolved || !signedInUser)) {
+    try { await renderPublicMarketChart(symbol); }
+    catch (e) { setChartMessage(`Chart unavailable: ${e.message}`); }
+    return;
+  }
   if (chartStyle === "candles" || chartInterval !== "1h") {
     try { await renderPublicMarketChart(symbol); }
     catch (e) { setChartMessage(`Chart unavailable: ${e.message}`); }
