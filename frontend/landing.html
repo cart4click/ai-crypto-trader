@@ -33,6 +33,9 @@
     .landing-actions .btn:hover, .landing-actions .btn:focus-visible { border-color: #bfdbfe; background: #334155; color: #fff; }
     .landing-actions .btn.primary { border-color: #60a5fa; background: #2563eb; color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,.3); }
     .landing-actions .btn.primary:hover, .landing-actions .btn.primary:focus-visible { border-color: #bfdbfe; background: #3b82f6; color: #fff; }
+    .landing-actions .btn.landing-guest { border-color: #38bdf8; background: rgba(14,116,144,.28); color: #e0f2fe; }
+    .landing-actions .btn.landing-guest:hover, .landing-actions .btn.landing-guest:focus-visible { border-color: #bae6fd; background: rgba(14,116,144,.5); color: #fff; }
+    .landing-guest-note { max-width: 700px; margin: 12px 0 0; color: #bfdbfe !important; font-size: 12px !important; line-height: 1.5 !important; }
     .landing-columns { display: grid; grid-template-columns: minmax(190px, 230px) minmax(0, 980px) minmax(190px, 230px); align-items: start; gap: 16px; }
     .landing-center { min-width: 0; }
     .live-panel { position: sticky; top: 16px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 13px; }
@@ -98,8 +101,10 @@
       <p>Cart4Click combines live crypto market data, forecasts, news, indicators, and an AI assistant in one dashboard. Start in paper-trading mode, understand the signals, and keep control of every action.</p>
       <div class="landing-actions">
         <a class="btn primary landing-signin" href="/login.html">Sign in securely</a>
+        <a class="btn landing-guest" href="/index.html">Continue without signing in</a>
         <a class="btn landing-safety" href="#safety">Review safety controls</a>
       </div>
+      <p class="landing-guest-note">You can view the public dashboard without signing in. Sign in when you want to add indicators, alerts, drawings, notes, or change personal settings.</p>
       </section>
 
     <section class="landing-grid" aria-label="Product features">
