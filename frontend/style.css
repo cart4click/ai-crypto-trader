@@ -172,6 +172,11 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .indicator-display-note { margin-top: 5px; line-height: 1.4; }
 .market-events-note { line-height: 1.45; margin: -3px 0 12px; }
 .crypto-events-sources { display: grid; gap: 8px; }
+.crypto-events-list { display: grid; gap: 8px; margin-bottom: 10px; }
+.crypto-event-item { padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--card2); }
+.crypto-event-item a { display: block; color: var(--text); font-size: 12px; line-height: 1.35; text-decoration: none; }
+.crypto-event-item a:hover { color: #93c5fd; }
+.crypto-event-item small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; }
 .crypto-events-link { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--card2); color: var(--text); text-decoration: none; transition: border-color .15s ease, background .15s ease; }
 .crypto-events-link:hover { border-color: var(--blue); background: rgba(59,130,246,.08); }
 .crypto-events-link strong, .crypto-events-link small { display: block; }

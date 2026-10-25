@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="auth-pending" data-public-dashboard="true">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -87,7 +87,7 @@
           <select id="chart-interval" class="market-select" aria-label="Market chart timeframe">
             <option value="15m">15m</option>
             <option value="30m">30m</option>
-            <option value="1h">1h</option>
+            <option value="1h" selected>1h</option>
             <option value="4h">4h</option>
             <option value="1d">1d</option>
           </select>
@@ -164,7 +164,7 @@
       </div>
       <div class="card market-notes-card">
         <h3>📝 Market notes</h3>
-        <p class="muted small">Your notes are saved in this browser for the selected coin.</p>
+        <p class="muted small">Sign in to save notes for the selected coin.</p>
         <textarea id="market-notes" rows="4" maxlength="4000" placeholder="Write your market notes, levels, or trade plan…" aria-label="Market notes"></textarea>
         <div class="market-notes-footer"><span id="market-notes-status" class="muted small" aria-live="polite">Select a coin to keep notes per market.</span><button id="btn-clear-market-notes" class="btn tiny" type="button">Clear note</button></div>
       </div>
@@ -196,7 +196,8 @@
       </div>
       <div class="card">
         <h3>🪙 Upcoming crypto events</h3>
-        <p class="muted small market-events-note">Browse upcoming crypto events by coin, date, and category. No API key is needed.</p>
+        <p class="muted small market-events-note">Live public event headlines — no API key is needed. Verify dates with the official calendar before acting.</p>
+        <div id="crypto-events-list" class="crypto-events-list"><div class="muted small">Loading event headlines…</div></div>
         <div class="crypto-events-sources">
           <a class="crypto-events-link" href="https://coinmarketcap.com/events/" target="_blank" rel="noopener noreferrer">
             <span><strong>CoinMarketCap</strong><small>Public crypto events calendar</small></span><span aria-hidden="true">↗</span>

@@ -90,5 +90,22 @@
     void requireDashboardSession().then(user => {
       if (user) startIdleLogout();
     });
+  } else if (document.documentElement.dataset.publicDashboard === "true") {
+    void getVerifiedUser().then(user => {
+      const isRootEntry = location.pathname === "/" || location.pathname === "";
+      if (isRootEntry) {
+        location.replace(user ? "/index.html" : "/landing.html");
+        return;
+      }
+      document.documentElement.classList.remove("auth-pending");
+      if (user) {
+        document.dispatchEvent(new CustomEvent("c4c:authenticated", { detail: { user } }));
+        startIdleLogout();
+      }
+    }).catch(() => {
+      const isRootEntry = location.pathname === "/" || location.pathname === "";
+      if (isRootEntry) location.replace("/landing.html");
+      else document.documentElement.classList.remove("auth-pending");
+    });
   }
 })();

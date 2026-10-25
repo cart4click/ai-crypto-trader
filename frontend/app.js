@@ -4,16 +4,12 @@ let chart = null;
 let drawingTool = null;
 let chartDrawings = [];
 let chartDrawingKey = "";
-let selected = localStorage.getItem("selected_symbol") || "BTCUSDT";
-let chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "candles" : "line";
+let selected = "BTCUSDT";
+let chartStyle = "line";
 const CHART_INTERVALS = ["15m", "30m", "1h", "4h", "1d"];
-let chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval"))
-  ? localStorage.getItem("market-chart-interval") : "1h";
+let chartInterval = "1h";
 const CHART_VIEW_STORAGE_KEY = "market-chart-viewport";
-let chartViewport = (() => {
-  try { return JSON.parse(localStorage.getItem(CHART_VIEW_STORAGE_KEY) || "null"); }
-  catch { return null; }
-})();
+let chartViewport = null;
 const INDICATOR_OPTIONS = {
   supertrend: "Multi-timeframe Supertrend",
   rsi: "Relative Strength Index (RSI)",
@@ -23,13 +19,7 @@ const INDICATOR_OPTIONS = {
   atr: "Average True Range (ATR 14)",
 };
 const INDICATORS_KEY = "market-indicators";
-let activeIndicators = (() => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(INDICATORS_KEY) || "[\"supertrend\"]");
-    const valid = Array.isArray(saved) ? saved.filter((name, index) => INDICATOR_OPTIONS[name] && saved.indexOf(name) === index) : [];
-    return valid.slice(0, 3);
-  } catch { return ["supertrend"]; }
-})();
+let activeIndicators = [];
 let marketRefreshInFlight = false;
 let forecastApiUnavailable = false;
 let marketStream = null;
@@ -37,12 +27,7 @@ let marketStreamKey = "";
 let marketStreamReconnect = null;
 let pendingMarketKline = null;
 const PRICE_ALERTS_KEY = "market-price-alerts-v1";
-let priceAlerts = (() => {
-  try {
-    const saved = JSON.parse(localStorage.getItem(PRICE_ALERTS_KEY) || "[]");
-    return Array.isArray(saved) ? saved.filter(alert => alert && typeof alert.id === "string" && typeof alert.symbol === "string" && ["above", "below"].includes(alert.condition) && Number.isFinite(alert.target)) : [];
-  } catch { return []; }
-})();
+let priceAlerts = [];
 
 let coinsCache = {};
 let forecastCache = null;
@@ -80,10 +65,16 @@ renderAccountLink();
 document.addEventListener("c4c:authenticated", event => {
   renderAccountLink(event.detail?.user);
   renderAccountEmail(event.detail?.user);
+  syncDashboardPreferences(event.detail?.user);
 });
-void window.C4CAuth.getVerifiedUser().then(user => { renderAccountLink(user); renderAccountEmail(user); }).catch(() => {});
+void window.C4CAuth.getVerifiedUser().then(user => {
+  renderAccountLink(user);
+  renderAccountEmail(user);
+  syncDashboardPreferences(user);
+}).catch(() => { renderAccountLink(null); syncDashboardPreferences(null); });
 
 function loadChartDrawings(symbol) {
+  if (!signedInUser) return [];
   chartDrawingKey = `chart-drawings:${symbol}:${chartInterval}`;
   try {
     const saved = JSON.parse(localStorage.getItem(chartDrawingKey) || "[]");
@@ -96,6 +87,7 @@ function loadChartDrawings(symbol) {
 }
 
 function saveChartDrawings() {
+  if (!signedInUser) return;
   if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
   renderDrawingManager();
 }
@@ -131,6 +123,7 @@ function renderDrawingManager() {
 renderDrawingManager();
 
 function savePriceAlerts() {
+  if (!signedInUser) return;
   localStorage.setItem(PRICE_ALERTS_KEY, JSON.stringify(priceAlerts));
   renderPriceAlerts();
   if (selected) startMarketStream(selected, chartInterval);
@@ -222,8 +215,10 @@ function marketNotesKey(symbol = selected) { return `market-notes:${symbol}`; }
 function renderMarketNotes() {
   const field = $("#market-notes");
   if (!field) return;
-  field.value = localStorage.getItem(marketNotesKey()) || "";
-  $("#market-notes-status").textContent = selected ? `Saved on this device · ${selected.replace("USDT", "/USDT")}` : "Select a coin to keep notes per market.";
+  field.value = signedInUser ? localStorage.getItem(marketNotesKey()) || "" : "";
+  $("#market-notes-status").textContent = signedInUser
+    ? (selected ? `Saved on this device · ${selected.replace("USDT", "/USDT")}` : "Select a coin to keep notes per market.")
+    : "Sign in to save notes for a market.";
 }
 renderMarketNotes();
 $("#market-notes").addEventListener("input", event => {
@@ -259,11 +254,7 @@ const DEFAULT_WATCHLIST = QUICK.map(base => `${base}USDT`);
 const PREVIOUS_EXPANDED_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK", "AVAX", "DOT", "TRX", "LTC", "BCH", "SUI", "SHIB", "PEPE", "NEAR", "UNI", "APT", "ATOM", "ETC", "FIL", "ARB", "OP"].map(base => `${base}USDT`);
 const PREVIOUS_COMPACT_DEFAULT = ["BTC", "ETH", "SOL", "BNB", "XRP", "DOGE", "ADA", "LINK"].map(base => `${base}USDT`);
 const WATCHLIST_KEY = "ai-trader-watchlist";
-let localWatchlist = loadLocalWatchlist();
-if (!localWatchlist.includes(selected)) {
-  selected = localWatchlist[0] || "";
-  localStorage.setItem("selected_symbol", selected);
-}
+let localWatchlist = DEFAULT_WATCHLIST.slice();
 renderMarketNotes();
 let publicWatchlistPrices = {};
 let publicWatchlistFetchedAt = 0;
@@ -287,7 +278,50 @@ function loadLocalWatchlist() {
 }
 
 function saveLocalWatchlist() {
+  if (!signedInUser) return;
   localStorage.setItem(WATCHLIST_KEY, JSON.stringify(localWatchlist));
+}
+
+function readSavedIndicators() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(INDICATORS_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter((name, index) => INDICATOR_OPTIONS[name] && saved.indexOf(name) === index).slice(0, 3) : [];
+  } catch { return []; }
+}
+
+function readSavedAlerts() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(PRICE_ALERTS_KEY) || "[]");
+    return Array.isArray(saved) ? saved.filter(alert => alert && typeof alert.id === "string" && typeof alert.symbol === "string" && ["above", "below"].includes(alert.condition) && Number.isFinite(alert.target)) : [];
+  } catch { return []; }
+}
+
+function syncDashboardPreferences(user) {
+  if (!user) {
+    selected = DEFAULT_WATCHLIST[0];
+    chartStyle = "line";
+    chartInterval = "1h";
+    chartViewport = null;
+    activeIndicators = [];
+    priceAlerts = [];
+    localWatchlist = DEFAULT_WATCHLIST.slice();
+    chartDrawings = [];
+    chartDrawingKey = "";
+  } else {
+    selected = localStorage.getItem("selected_symbol") || DEFAULT_WATCHLIST[0];
+    chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "candles" : "line";
+    chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval")) ? localStorage.getItem("market-chart-interval") : "1h";
+    try { chartViewport = JSON.parse(localStorage.getItem(CHART_VIEW_STORAGE_KEY) || "null"); } catch { chartViewport = null; }
+    activeIndicators = readSavedIndicators();
+    priceAlerts = readSavedAlerts();
+    localWatchlist = loadLocalWatchlist();
+    if (!localWatchlist.includes(selected)) selected = localWatchlist[0] || DEFAULT_WATCHLIST[0];
+  }
+  $("#chart-style").value = chartStyle;
+  $("#chart-interval").value = chartInterval;
+  renderMarketNotes();
+  renderPriceAlerts();
+  renderIndicatorControls();
 }
 
 /* ------------------------------------------------------------------ helpers */
@@ -415,7 +449,7 @@ async function refreshCoins(forceMarket = false) {
   const prevSelected = selected;
   if (!selected || !coinsCache[selected]) {
     selected = list[0]?.symbol || "";
-    localStorage.setItem("selected_symbol", selected);
+    if (signedInUser) localStorage.setItem("selected_symbol", selected);
   }
   renderMarketNotes();
   $("#coins-list").innerHTML = list.length ? list.map(coinCard).join("") :
@@ -513,7 +547,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
   const act = ev.target.dataset.act;
 
   if (!act) { // open settings / select
-    if (selected !== sym) { selected = sym; localStorage.setItem("selected_symbol", sym); renderMarketNotes(); refreshCoins(); refreshForecast(); }
+    if (selected !== sym) { selected = sym; if (signedInUser) localStorage.setItem("selected_symbol", sym); renderMarketNotes(); refreshCoins(); refreshForecast(); }
     else card.classList.toggle("open");
     return;
   }
@@ -524,7 +558,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
       saveLocalWatchlist();
       if (selected === sym) {
         selected = localWatchlist[0] || "";
-        localStorage.setItem("selected_symbol", selected);
+        if (signedInUser) localStorage.setItem("selected_symbol", selected);
         renderMarketNotes();
       }
       await refreshPublicWatchlist(true);
@@ -582,7 +616,7 @@ async function addCoin(sym) {
         saveLocalWatchlist();
       }
       selected = symbol;
-      localStorage.setItem("selected_symbol", selected);
+      if (signedInUser) localStorage.setItem("selected_symbol", selected);
       renderMarketNotes();
       await refreshPublicWatchlist(true);
       await refreshForecast();
@@ -1163,6 +1197,7 @@ const chartDrawingOverlay = {
 if (window.Chart) Chart.register(candlestickOverlay, chartDrawingOverlay);
 
 function saveChartViewport() {
+  if (!signedInUser) return;
   if (!chart?.scales?.x || !chart?.scales?.y) return;
   chartViewport = {
     key: chartViewportKey(),
@@ -1697,10 +1732,26 @@ function newsAge(value) {
 function safeNewsUrl(value) {
   try {
     const url = new URL(value);
-    const trustedHosts = ["coindesk.com", "theblock.co", "decrypt.co", "cointelegraph.com", "solana.com"];
+    const trustedHosts = ["news.google.com", "coindesk.com", "theblock.co", "decrypt.co", "cointelegraph.com", "solana.com"];
     return url.protocol === "https:" && trustedHosts.some(host => url.hostname === host || url.hostname.endsWith(`.${host}`))
       ? url.href : "";
   } catch { return ""; }
+}
+
+async function fetchGoogleNewsFeed(query, limit = 10) {
+  const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+  const response = await fetch(proxyUrl, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Google News returned HTTP ${response.status}.`);
+  const xml = new DOMParser().parseFromString(await response.text(), "application/xml");
+  if (xml.querySelector("parsererror")) throw new Error("Google News feed could not be parsed.");
+  return [...xml.querySelectorAll("item")].slice(0, limit).map(item => ({
+    title: cleanNewsText(item.querySelector("title")?.textContent || "Crypto event headline"),
+    summary: cleanNewsText(item.querySelector("description")?.textContent || ""),
+    url: item.querySelector("link")?.textContent || "https://news.google.com/",
+    source: cleanNewsText(item.querySelector("source")?.textContent || "Google News"),
+    published: item.querySelector("pubDate")?.textContent || "",
+  }));
 }
 
 function newsCoins(item) {
@@ -1738,7 +1789,10 @@ async function fetchPublicNews(force = false) {
       published: item.pubDate,
     }));
   }));
-  const items = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  let items = results.flatMap(result => result.status === "fulfilled" ? result.value : []);
+  if (!items.length) {
+    items = await fetchGoogleNewsFeed("cryptocurrency market bitcoin ethereum", 30);
+  }
   if (!items.length) throw new Error("Crypto news feeds are temporarily unavailable.");
   const seen = new Set();
   const recent = items.filter(item => {
@@ -1756,6 +1810,21 @@ async function fetchPublicNews(force = false) {
   publicNewsCache = { market, items: recent, fear_greed: null, ai: null, source: "publisher RSS" };
   publicNewsFetchedAt = Date.now();
   return publicNewsCache;
+}
+
+async function refreshCryptoEvents() {
+  const box = $("#crypto-events-list");
+  if (!box) return;
+  try {
+    const events = await fetchGoogleNewsFeed("crypto upcoming event token unlock mainnet listing conference", 5);
+    box.innerHTML = events.length ? events.map(event => {
+      const url = safeNewsUrl(event.url) || "https://news.google.com/";
+      return `<article class="crypto-event-item"><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(event.title)}</a><small>${esc(event.source)} · ${esc(newsAge(event.published) || "recent")}</small></article>`;
+    }).join("") : '<div class="muted small">No event headlines are available right now.</div>';
+  } catch (error) {
+    console.warn("crypto events:", error.message);
+    box.innerHTML = '<div class="muted small">Event headlines are temporarily unavailable. Use the public calendars below.</div>';
+  }
 }
 
 async function refreshNews(force = false) {
@@ -2046,10 +2115,11 @@ $("#chart-interval").addEventListener("change", async (event) => {
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));
 
-refreshStatus(); refreshMarket(); refreshNews(); refreshPending(); refreshTrades(); refreshWallet();
+refreshStatus(); refreshMarket(); refreshNews(); refreshCryptoEvents(); refreshPending(); refreshTrades(); refreshWallet();
 setInterval(refreshStatus, 10000);
 setInterval(() => refreshMarket(), 60 * 1000);
 setInterval(refreshNews, 10 * 60 * 1000);
+setInterval(refreshCryptoEvents, 10 * 60 * 1000);
 setInterval(refreshPending, 8000);
 setInterval(refreshTrades, 10000);
 setInterval(refreshWallet, 10000);
