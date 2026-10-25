@@ -36,8 +36,41 @@ const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 const PUBLIC_DASHBOARD = document.documentElement.dataset.publicDashboard === "true";
 const accountLink = $("#account-link");
 const accountEmail = $("#account-email");
+const themeButton = $("#btn-theme");
+const networkStatus = $("#network-status");
 let signedInUser = null;
 let authResolved = false;
+const THEME_KEY = "c4c-theme";
+function preferenceKey(key) {
+  if (!signedInUser) return key;
+  const identity = String(signedInUser.id || signedInUser.email || "user").toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+  return `${key}:${identity}`;
+}
+function applyTheme(theme = localStorage.getItem(THEME_KEY) || "dark") {
+  const light = theme === "light";
+  document.documentElement.classList.toggle("theme-light", light);
+  if (themeButton) {
+    themeButton.textContent = light ? "☾ Dark" : "☀ Light";
+    themeButton.setAttribute("aria-label", light ? "Switch to dark theme" : "Switch to light theme");
+  }
+}
+function renderNetworkStatus() {
+  if (!networkStatus) return;
+  const offline = !navigator.onLine;
+  networkStatus.hidden = !offline;
+  networkStatus.textContent = offline
+    ? "You are offline. Prices and news will update when your connection returns."
+    : "";
+}
+applyTheme();
+renderNetworkStatus();
+window.addEventListener("online", renderNetworkStatus);
+window.addEventListener("offline", renderNetworkStatus);
+themeButton?.addEventListener("click", () => {
+  const next = document.documentElement.classList.contains("theme-light") ? "dark" : "light";
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+});
 function loginForAction() {
   const target = `${location.pathname}${location.search}${location.hash}`;
   location.replace(`/login.html?returnTo=${encodeURIComponent(target)}&message=Sign in to use this feature.`);
@@ -89,7 +122,7 @@ function loadChartDrawings(symbol) {
   if (!signedInUser) return [];
   chartDrawingKey = `chart-drawings:${symbol}:${chartInterval}`;
   try {
-    const saved = JSON.parse(localStorage.getItem(chartDrawingKey) || "[]");
+    const saved = JSON.parse(localStorage.getItem(preferenceKey(chartDrawingKey)) || "[]");
     return Array.isArray(saved) ? saved.filter(line =>
       (line.type === "horizontal" && Number.isFinite(line.price)) ||
       (line.type === "vertical" && Number.isFinite(line.index)) ||
@@ -100,7 +133,7 @@ function loadChartDrawings(symbol) {
 
 function saveChartDrawings() {
   if (!signedInUser) return;
-  if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+  if (chartDrawingKey) localStorage.setItem(preferenceKey(chartDrawingKey), JSON.stringify(chartDrawings));
   renderDrawingManager();
 }
 
@@ -136,7 +169,7 @@ renderDrawingManager();
 
 function savePriceAlerts() {
   if (!signedInUser) return;
-  localStorage.setItem(PRICE_ALERTS_KEY, JSON.stringify(priceAlerts));
+  localStorage.setItem(preferenceKey(PRICE_ALERTS_KEY), JSON.stringify(priceAlerts));
   renderPriceAlerts();
   if (selected) startMarketStream(selected, chartInterval);
 }
@@ -207,7 +240,7 @@ $("#drawing-manager-list").addEventListener("input", async event => {
     drawing.color = /^#[0-9a-f]{6}$/i.test(control.value) ? control.value : "#fbbf24";
     if (chart) chart.update("none");
   }
-  if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
+  if (chartDrawingKey) localStorage.setItem(preferenceKey(chartDrawingKey), JSON.stringify(chartDrawings));
 });
 $("#drawing-manager-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-drawing-manager-action]");
@@ -289,7 +322,7 @@ let publicWatchlistFetchedAt = 0;
 
 function readDashboardLayout() {
   try {
-    const saved = JSON.parse(localStorage.getItem(DASHBOARD_LAYOUT_KEY) || "null");
+    const saved = JSON.parse(localStorage.getItem(preferenceKey(DASHBOARD_LAYOUT_KEY)) || "null");
     if (!saved || typeof saved !== "object") return { ...DEFAULT_DASHBOARD_LAYOUT };
     return Object.fromEntries(Object.keys(DEFAULT_DASHBOARD_LAYOUT).map(key => [key, saved[key] !== false]));
   } catch { return { ...DEFAULT_DASHBOARD_LAYOUT }; }
@@ -319,7 +352,7 @@ function saveDashboardLayout() {
   if (!signedInUser) return;
   const layout = Object.fromEntries(Object.keys(DEFAULT_DASHBOARD_LAYOUT).map(key => [key, Boolean($("[data-dashboard-panel-option=\"" + key + "\"]")?.checked)]));
   if (!Object.values(layout).some(Boolean)) layout.chart = true;
-  localStorage.setItem(DASHBOARD_LAYOUT_KEY, JSON.stringify(layout));
+  localStorage.setItem(preferenceKey(DASHBOARD_LAYOUT_KEY), JSON.stringify(layout));
   renderDashboardLayout(signedInUser);
   $("#dashboard-customizer").hidden = true;
 }
@@ -335,13 +368,13 @@ document.querySelectorAll("[data-customizer-close]").forEach(button => button.ad
 $("#btn-save-dashboard")?.addEventListener("click", saveDashboardLayout);
 $("#btn-reset-dashboard")?.addEventListener("click", () => {
   if (!signedInUser) return;
-  localStorage.removeItem(DASHBOARD_LAYOUT_KEY);
+  localStorage.removeItem(preferenceKey(DASHBOARD_LAYOUT_KEY));
   renderDashboardLayout(signedInUser);
 });
 
 function loadLocalWatchlist() {
   try {
-    const saved = JSON.parse(localStorage.getItem(WATCHLIST_KEY) || "null");
+    const saved = JSON.parse(localStorage.getItem(preferenceKey(WATCHLIST_KEY)) || "null");
     if (!Array.isArray(saved)) return DEFAULT_WATCHLIST;
     const cleaned = [...new Set(saved.filter(s => /^[A-Z0-9]{5,20}$/.test(s)))];
     // Shrink old auto-filled lists while retaining symbols visitors searched for themselves.
@@ -359,19 +392,19 @@ function loadLocalWatchlist() {
 
 function saveLocalWatchlist() {
   if (!signedInUser) return;
-  localStorage.setItem(WATCHLIST_KEY, JSON.stringify(localWatchlist));
+  localStorage.setItem(preferenceKey(WATCHLIST_KEY), JSON.stringify(localWatchlist));
 }
 
 function readSavedIndicators() {
   try {
-    const saved = JSON.parse(localStorage.getItem(INDICATORS_KEY) || "[]");
+    const saved = JSON.parse(localStorage.getItem(preferenceKey(INDICATORS_KEY)) || "[]");
     return Array.isArray(saved) ? saved.filter((name, index) => INDICATOR_OPTIONS[name] && saved.indexOf(name) === index).slice(0, 3) : [];
   } catch { return []; }
 }
 
 function readSavedAlerts() {
   try {
-    const saved = JSON.parse(localStorage.getItem(PRICE_ALERTS_KEY) || "[]");
+    const saved = JSON.parse(localStorage.getItem(preferenceKey(PRICE_ALERTS_KEY)) || "[]");
     return Array.isArray(saved) ? saved.filter(alert => alert && typeof alert.id === "string" && typeof alert.symbol === "string" && ["above", "below"].includes(alert.condition) && Number.isFinite(alert.target)) : [];
   } catch { return []; }
 }
@@ -388,10 +421,10 @@ function syncDashboardPreferences(user) {
     chartDrawings = [];
     chartDrawingKey = "";
   } else {
-    selected = localStorage.getItem("selected_symbol") || DEFAULT_WATCHLIST[0];
-    chartStyle = localStorage.getItem("market-chart-style") === "candles" ? "candles" : "line";
-    chartInterval = CHART_INTERVALS.includes(localStorage.getItem("market-chart-interval")) ? localStorage.getItem("market-chart-interval") : "1h";
-    try { chartViewport = JSON.parse(localStorage.getItem(CHART_VIEW_STORAGE_KEY) || "null"); } catch { chartViewport = null; }
+    selected = localStorage.getItem(preferenceKey("selected_symbol")) || DEFAULT_WATCHLIST[0];
+    chartStyle = localStorage.getItem(preferenceKey("market-chart-style")) === "candles" ? "candles" : "line";
+    chartInterval = CHART_INTERVALS.includes(localStorage.getItem(preferenceKey("market-chart-interval"))) ? localStorage.getItem(preferenceKey("market-chart-interval")) : "1h";
+    try { chartViewport = JSON.parse(localStorage.getItem(preferenceKey(CHART_VIEW_STORAGE_KEY)) || "null"); } catch { chartViewport = null; }
     activeIndicators = readSavedIndicators();
     priceAlerts = readSavedAlerts();
     localWatchlist = loadLocalWatchlist();
@@ -534,7 +567,7 @@ async function refreshCoins(forceMarket = false) {
   const prevSelected = selected;
   if (!selected || !coinsCache[selected]) {
     selected = list[0]?.symbol || "";
-    if (signedInUser) localStorage.setItem("selected_symbol", selected);
+    if (signedInUser) localStorage.setItem(preferenceKey("selected_symbol"), selected);
   }
   renderMarketNotes();
   $("#coins-list").innerHTML = list.length ? list.map(coinCard).join("") :
@@ -632,7 +665,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
   const act = ev.target.dataset.act;
 
   if (!act) { // open settings / select
-    if (selected !== sym) { selected = sym; if (signedInUser) localStorage.setItem("selected_symbol", sym); renderMarketNotes(); refreshCoins(); refreshForecast(); }
+    if (selected !== sym) { selected = sym; if (signedInUser) localStorage.setItem(preferenceKey("selected_symbol"), sym); renderMarketNotes(); refreshCoins(); refreshForecast(); }
     else card.classList.toggle("open");
     return;
   }
@@ -643,7 +676,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
       saveLocalWatchlist();
       if (selected === sym) {
         selected = localWatchlist[0] || "";
-        if (signedInUser) localStorage.setItem("selected_symbol", selected);
+        if (signedInUser) localStorage.setItem(preferenceKey("selected_symbol"), selected);
         renderMarketNotes();
       }
       await refreshPublicWatchlist(true);
@@ -701,7 +734,7 @@ async function addCoin(sym) {
         saveLocalWatchlist();
       }
       selected = symbol;
-      if (signedInUser) localStorage.setItem("selected_symbol", selected);
+      if (signedInUser) localStorage.setItem(preferenceKey("selected_symbol"), selected);
       renderMarketNotes();
       await refreshPublicWatchlist(true);
       await refreshForecast();
@@ -1294,7 +1327,7 @@ function saveChartViewport() {
     xMin: chart.scales.x.min, xMax: chart.scales.x.max,
     yMin: chart.scales.y.min, yMax: chart.scales.y.max,
   };
-  localStorage.setItem(CHART_VIEW_STORAGE_KEY, JSON.stringify(chartViewport));
+  if (signedInUser) localStorage.setItem(preferenceKey(CHART_VIEW_STORAGE_KEY), JSON.stringify(chartViewport));
 }
 
 function panChartByPixels(dx, dy, persist = true) {
@@ -1345,7 +1378,7 @@ function zoomChart(direction) {
 
 function resetChartViewport() {
   chartViewport = null;
-  localStorage.removeItem(CHART_VIEW_STORAGE_KEY);
+  if (signedInUser) localStorage.removeItem(preferenceKey(CHART_VIEW_STORAGE_KEY));
   if (!chart) return;
   for (const axis of ["x", "y"]) {
     delete chart.options.scales[axis].min;
@@ -2209,7 +2242,7 @@ $("#btn-add-indicator").addEventListener("click", async () => {
   const name = $("#indicator-select").value;
   if (!INDICATOR_OPTIONS[name] || activeIndicators.includes(name) || activeIndicators.length >= 3) return;
   activeIndicators.push(name);
-  localStorage.setItem(INDICATORS_KEY, JSON.stringify(activeIndicators));
+  localStorage.setItem(preferenceKey(INDICATORS_KEY), JSON.stringify(activeIndicators));
   renderIndicatorControls();
   renderIndicatorReadouts(chart?.$indicatorCandles || []);
   refreshMarket(true);
@@ -2219,7 +2252,7 @@ $("#active-indicators").addEventListener("click", async event => {
   if (!button) return;
   if (!await requireActionSignIn()) return;
   activeIndicators = activeIndicators.filter(name => name !== button.dataset.removeIndicator);
-  localStorage.setItem(INDICATORS_KEY, JSON.stringify(activeIndicators));
+  localStorage.setItem(preferenceKey(INDICATORS_KEY), JSON.stringify(activeIndicators));
   renderIndicatorControls();
   renderIndicatorReadouts(chart?.$indicatorCandles || []);
   refreshMarket(true);
@@ -2227,13 +2260,13 @@ $("#active-indicators").addEventListener("click", async event => {
 $("#chart-style").addEventListener("change", async (event) => {
   if (!await requireActionSignIn()) { event.target.value = chartStyle; return; }
   chartStyle = event.target.value === "candles" ? "candles" : "line";
-  localStorage.setItem("market-chart-style", chartStyle);
+  localStorage.setItem(preferenceKey("market-chart-style"), chartStyle);
   refreshMarket(true);
 });
 $("#chart-interval").addEventListener("change", async (event) => {
   if (!await requireActionSignIn()) { event.target.value = chartInterval; return; }
   chartInterval = CHART_INTERVALS.includes(event.target.value) ? event.target.value : "1h";
-  localStorage.setItem("market-chart-interval", chartInterval);
+  localStorage.setItem(preferenceKey("market-chart-interval"), chartInterval);
   refreshMarket(true);
 });
 $("#btn-market-refresh").addEventListener("click", () => refreshMarket(true));

@@ -32,6 +32,7 @@
       <button id="btn-balances" class="btn">💰 Balances</button>
       <button id="btn-report" class="btn">📊 AI Report</button>
       <button id="btn-customize-dashboard" class="btn" type="button" hidden>⚙ Customize</button>
+      <button id="btn-theme" class="btn" type="button" aria-label="Switch to light theme">☀ Light</button>
     </div>
   </header>
 
@@ -39,13 +40,14 @@
   <div id="idle-warning" class="idle-warning" role="alert" hidden>
     You’ll be signed out in 30 seconds due to inactivity. Move the mouse or interact with the dashboard to stay signed in.
   </div>
+  <div id="network-status" class="network-status" role="status" hidden></div>
 
   <main>
     <!-- LEFT: market + coins -->
     <section class="col left">
       <div class="card" data-dashboard-panel="wallet">
         <h3>💰 Wallet</h3>
-        <div id="wallet-box"><span class="muted small">Loading...</span></div>
+        <div id="wallet-box"><span class="muted small loading-state">Loading wallet…</span></div>
       </div>
       
       <div class="card" data-dashboard-panel="watchlist">
@@ -55,7 +57,7 @@
           <button id="btn-add" class="btn primary">Add</button>
         </div>
         <div class="quick-add" id="quick-add"></div>
-        <div id="coins-list" class="coins-list"><div class="muted small">No coins yet — add one above.</div></div>
+        <div id="coins-list" class="coins-list"><div class="muted small loading-state">Loading markets…</div></div>
       </div>
 
       <div class="card" data-dashboard-panel="sentiment">
@@ -211,7 +213,7 @@
       </div>
       <div class="card" data-dashboard-panel="news">
         <h3>📰 News &amp; AI analysis</h3>
-        <div id="news-list"><div class="muted small">loading…</div></div>
+        <div id="news-list"><div class="muted small loading-state">Loading news…</div></div>
       </div>
     </section>
   </main>
