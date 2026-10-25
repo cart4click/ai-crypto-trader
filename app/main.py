@@ -58,6 +58,15 @@ _CHAT_REQUESTS_PER_WINDOW = 20
 _request_times: dict[str, deque[float]] = defaultdict(deque)
 
 
+def _public_api_request(request: Request) -> bool:
+    """Allow anonymous access only to read-only public market features."""
+    path = request.url.path
+    if request.method == "GET":
+        return path in {"/api/status", "/api/news"} or path.startswith("/api/forecast/") or path.startswith("/api/advice/")
+    # The common website chatbot is public, but remains IP-rate-limited above.
+    return path == "/api/chat" and request.method == "POST"
+
+
 def _client_key(request: Request) -> str:
     """Use the direct peer address; do not trust spoofable forwarded headers."""
     return request.client.host if request.client else "unknown"
@@ -84,7 +93,7 @@ if settings.app_cors_origins:
 
 @app.middleware("http")
 async def token_guard(request: Request, call_next):
-    if request.url.path.startswith("/api/") and request.method != "OPTIONS":
+    if request.url.path.startswith("/api/") and request.method != "OPTIONS" and not _public_api_request(request):
         now = time.monotonic()
         client = _client_key(request)
         limit = _CHAT_REQUESTS_PER_WINDOW if request.url.path == "/api/chat" else _API_REQUESTS_PER_WINDOW
@@ -121,8 +130,17 @@ async def binance_error_handler(request: Request, exc: BinanceError):
 
 # --------------------------------------------------------------------- status
 @app.get("/api/status")
-async def status():
+async def status(request: Request):
     status = await runner.get_status()
+    if not getattr(request.state, "user", None):
+        return {
+            "public": True,
+            "mode": status.get("mode", "DRY RUN"),
+            "dry_run": status.get("dry_run", True),
+            "testnet": status.get("testnet", False),
+            "running": False,
+            "ai": {"llm_configured": False},
+        }
     # Add current AI provider info and all providers to the status
     if status.get("ai", {}).get("llm_configured"):
         status["ai"]["current_provider"] = ai_manager.get_current_provider_info()

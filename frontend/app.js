@@ -49,10 +49,26 @@ let forecastCache = null;
 const API_BASE_URL = (window.API_BASE_URL || "").replace(/\/+$/, "");
 const accountLink = $("#account-link");
 const accountEmail = $("#account-email");
-function renderAccountLink() {
+let signedInUser = null;
+function loginForAction() {
+  const target = `${location.pathname}${location.search}${location.hash}`;
+  location.replace(`/login.html?returnTo=${encodeURIComponent(target)}&message=Sign in to use this feature.`);
+}
+async function requireActionSignIn() {
+  try {
+    signedInUser = await window.C4CAuth.getVerifiedUser();
+  } catch {
+    signedInUser = null;
+  }
+  if (signedInUser) return true;
+  loginForAction();
+  return false;
+}
+function renderAccountLink(user = signedInUser) {
   if (!accountLink) return;
-  accountLink.textContent = "Sign out";
-  accountLink.onclick = () => { void window.C4CAuth.logout(); };
+  signedInUser = user || null;
+  accountLink.textContent = signedInUser ? "Sign out" : "Sign in";
+  accountLink.onclick = () => signedInUser ? void window.C4CAuth.logout() : loginForAction();
 }
 function renderAccountEmail(user) {
   if (!accountEmail) return;
@@ -61,8 +77,11 @@ function renderAccountEmail(user) {
   accountEmail.hidden = !email;
 }
 renderAccountLink();
-document.addEventListener("c4c:authenticated", event => renderAccountEmail(event.detail?.user));
-void window.C4CAuth.getVerifiedUser().then(renderAccountEmail).catch(() => {});
+document.addEventListener("c4c:authenticated", event => {
+  renderAccountLink(event.detail?.user);
+  renderAccountEmail(event.detail?.user);
+});
+void window.C4CAuth.getVerifiedUser().then(user => { renderAccountLink(user); renderAccountEmail(user); }).catch(() => {});
 
 function loadChartDrawings(symbol) {
   chartDrawingKey = `chart-drawings:${symbol}:${chartInterval}`;
@@ -149,6 +168,7 @@ function checkPriceAlerts(symbol, price) {
 
 $("#price-alert-form").addEventListener("submit", async event => {
   event.preventDefault();
+  if (!await requireActionSignIn()) return;
   const target = Number($("#price-alert-value").value);
   if (!selected || !Number.isFinite(target) || target <= 0) {
     toast("Enter a target price greater than zero.", true);
@@ -162,15 +182,17 @@ $("#price-alert-form").addEventListener("submit", async event => {
   savePriceAlerts();
   toast(`Price alert added for ${selected}.`);
 });
-$("#price-alert-list").addEventListener("click", event => {
+$("#price-alert-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-remove-price-alert]");
   if (!button) return;
+  if (!await requireActionSignIn()) return;
   priceAlerts = priceAlerts.filter(alert => alert.id !== button.dataset.removePriceAlert);
   savePriceAlerts();
 });
 renderPriceAlerts();
 
-$("#drawing-manager-list").addEventListener("input", event => {
+$("#drawing-manager-list").addEventListener("input", async event => {
+  if (!signedInUser && !await requireActionSignIn()) return;
   const control = event.target;
   const index = Number(control.dataset.drawingLabel ?? control.dataset.drawingColor);
   const drawing = chartDrawings[index];
@@ -182,9 +204,10 @@ $("#drawing-manager-list").addEventListener("input", event => {
   }
   if (chartDrawingKey) localStorage.setItem(chartDrawingKey, JSON.stringify(chartDrawings));
 });
-$("#drawing-manager-list").addEventListener("click", event => {
+$("#drawing-manager-list").addEventListener("click", async event => {
   const button = event.target.closest("[data-drawing-manager-action]");
   if (!button) return;
+  if (!await requireActionSignIn()) return;
   const row = button.closest("[data-drawing-index]");
   const drawing = chartDrawings[Number(row?.dataset.drawingIndex)];
   if (!drawing) return;
@@ -204,10 +227,15 @@ function renderMarketNotes() {
 }
 renderMarketNotes();
 $("#market-notes").addEventListener("input", event => {
+  if (!signedInUser) { event.currentTarget.blur(); void requireActionSignIn(); return; }
   localStorage.setItem(marketNotesKey(), event.currentTarget.value);
   $("#market-notes-status").textContent = `Saved on this device · ${selected.replace("USDT", "/USDT")}`;
 });
-$("#btn-clear-market-notes").addEventListener("click", () => {
+$("#market-notes").addEventListener("focus", async event => {
+  if (!await requireActionSignIn()) event.currentTarget.blur();
+});
+$("#btn-clear-market-notes").addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
   localStorage.removeItem(marketNotesKey());
   $("#market-notes").value = "";
   $("#market-notes-status").textContent = "Note cleared.";
@@ -264,15 +292,17 @@ function saveLocalWatchlist() {
 
 /* ------------------------------------------------------------------ helpers */
 async function api(path, opts = {}) {
+  const method = (opts.method || "GET").toUpperCase();
+  const authRequired = opts.authRequired ?? !["GET", "HEAD"].includes(method);
   opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
   const accessToken = await window.C4CAuth.getAccessToken();
-  if (!accessToken) {
+  if (!accessToken && authRequired) {
     location.replace(`/login.html?returnTo=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`);
     throw new Error("Sign in is required.");
   }
-  opts.headers.Authorization = `Bearer ${accessToken}`;
+  if (accessToken) opts.headers.Authorization = `Bearer ${accessToken}`;
   const res = await fetch(`${API_BASE_URL}${path}`, opts);
-  if (res.status === 401) {
+  if (res.status === 401 && authRequired) {
     location.replace(`/login.html?returnTo=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}&message=Your%20sign-in%20session%20expired.`);
     throw new Error("unauthorized");
   }
@@ -337,6 +367,10 @@ async function refreshStatus() {
     $("#bot-state").textContent = st.running ? "bot running" : "bot paused";
     $("#bot-state").className = "badge " + (st.running ? "on" : "off");
     $("#btn-bot").textContent = st.running ? "⏸ Pause bot" : "▶ Start bot";
+    if (st.public) {
+      $("#connections").innerHTML = '<span class="pill">Public market view · sign in for personal tools</span>';
+      return;
+    }
     let aiProviderInline = "";
     
     if (st.ai.llm_configured && st.ai.all_providers) {
@@ -485,6 +519,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
   }
   try {
     if (act === "remove-watch") {
+      if (!await requireActionSignIn()) return;
       localWatchlist = localWatchlist.filter(symbol => symbol !== sym);
       saveLocalWatchlist();
       if (selected === sym) {
@@ -501,20 +536,25 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
       }
       toast(`${sym} removed from watchlist`);
     } else if (act === "save") {
+      if (!await requireActionSignIn()) return;
       const fields = {};
       card.querySelectorAll("input[data-f]").forEach(i => fields[i.dataset.f] = parseFloat(i.value));
       await api(`/api/coins/${sym}`, { method: "PATCH", body: JSON.stringify(fields) });
       toast(`${sym} settings saved`);
     } else if (act === "manual-buy" || act === "manual-sell") {
+      if (!await requireActionSignIn()) return;
       await api("/api/manual-trade", { method: "POST", body: JSON.stringify({ symbol: sym, side: act === "manual-buy" ? "BUY" : "SELL" }) });
       toast(`${act === "manual-buy" ? "Buy" : "Sell"} signal created for ${sym} — check pending/Telegram`);
     } else if (act === "re-anchor") {
+      if (!await requireActionSignIn()) return;
       await api(`/api/coins/${sym}`, { method: "PATCH", body: JSON.stringify({ reset_anchor: true }) });
       toast(`${sym} will re-anchor to current price on next check`);
     } else if (act === "toggle") {
+      if (!await requireActionSignIn()) return;
       const en = coinsCache[sym]?.enabled;
       await api(`/api/coins/${sym}`, { method: "PATCH", body: JSON.stringify({ enabled: !en }) });
     } else if (act === "remove") {
+      if (!await requireActionSignIn()) return;
       if (!confirm(`Remove ${sym}? (positions info is removed too, funds stay on Binance)`)) return;
       await api(`/api/coins/${sym}`, { method: "DELETE" });
       toast(`${sym} removed`);
@@ -524,6 +564,7 @@ $("#coins-list")?.addEventListener("click", async (ev) => {
 });
 
 async function addCoin(sym) {
+  if (!await requireActionSignIn()) return;
   const input = String(sym).trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
   const base = ({ SOLANA: "SOL", BITCOIN: "BTC", ETHEREUM: "ETH" })[input.replace(/USDT$/, "")] || input.replace(/USDT$/, "");
   const symbol = `${base}USDT`;
@@ -1222,6 +1263,7 @@ function drawingPointFromPointer(event) {
 $("#chart").addEventListener("pointerdown", event => {
   if (event.button !== 0) return;
   if (drawingTool === "freehand") {
+    if (!signedInUser) { void requireActionSignIn(); return; }
     const point = drawingPointFromPointer(event);
     if (!point) return;
     chartDrawings.push({ type: "freehand", points: [{ index: point.index, price: point.price }] });
@@ -1300,9 +1342,10 @@ function setDrawingTool(tool) {
 
 document.querySelector(".chart-drawing-tools").addEventListener("click", event => {
   const button = event.target.closest("[data-draw-tool]");
-  if (button) setDrawingTool(button.dataset.drawTool);
+  if (button) { void requireActionSignIn().then(allowed => { if (allowed) setDrawingTool(button.dataset.drawTool); }); }
 });
-$("#btn-clear-drawings").addEventListener("click", () => {
+$("#btn-clear-drawings").addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
   chartDrawings = [];
   saveChartDrawings();
   if (chart) chart.update("none");
@@ -1311,6 +1354,7 @@ $("#btn-clear-drawings").addEventListener("click", () => {
 });
 $("#chart").addEventListener("click", event => {
   if (!drawingTool || !chart) return;
+  if (!signedInUser) { void requireActionSignIn(); return; }
   if (drawingTool === "freehand") return;
   const point = drawingPointFromPointer(event);
   if (!point) return;
@@ -1377,6 +1421,7 @@ function updateHiddenDrawingButton() {
 }
 
 $("#chart").addEventListener("contextmenu", event => {
+  if (!signedInUser) { void requireActionSignIn(); return; }
   const index = findDrawingAt(event.clientX, event.clientY);
   if (index < 0) { closeDrawingMenu(); return; }
   event.preventDefault();
@@ -1390,7 +1435,8 @@ $("#chart").addEventListener("contextmenu", event => {
   menu.querySelector("button")?.focus();
 });
 
-$("#drawing-context-menu").addEventListener("click", event => {
+$("#drawing-context-menu").addEventListener("click", async event => {
+  if (!await requireActionSignIn()) return;
   const action = event.target.closest("[data-drawing-action]")?.dataset.drawingAction;
   const drawing = chartDrawings[contextDrawingIndex];
   if (!action || !drawing) { closeDrawingMenu(); return; }
@@ -1414,7 +1460,8 @@ $("#drawing-context-menu").addEventListener("click", event => {
   closeDrawingMenu();
 });
 
-$("#btn-show-hidden-drawings").addEventListener("click", () => {
+$("#btn-show-hidden-drawings").addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
   chartDrawings.forEach(drawing => { drawing.hidden = false; });
   saveChartDrawings();
   if (chart) chart.update("none");
@@ -1965,7 +2012,8 @@ $("#chart-style").value = chartStyle;
 $("#chart-interval").value = chartInterval;
 renderIndicatorControls();
 $("#indicator-select").addEventListener("change", renderIndicatorControls);
-$("#btn-add-indicator").addEventListener("click", () => {
+$("#btn-add-indicator").addEventListener("click", async () => {
+  if (!await requireActionSignIn()) return;
   const name = $("#indicator-select").value;
   if (!INDICATOR_OPTIONS[name] || activeIndicators.includes(name) || activeIndicators.length >= 3) return;
   activeIndicators.push(name);
@@ -1974,21 +2022,24 @@ $("#btn-add-indicator").addEventListener("click", () => {
   renderIndicatorReadouts(chart?.$indicatorCandles || []);
   refreshMarket(true);
 });
-$("#active-indicators").addEventListener("click", event => {
+$("#active-indicators").addEventListener("click", async event => {
   const button = event.target.closest("[data-remove-indicator]");
   if (!button) return;
+  if (!await requireActionSignIn()) return;
   activeIndicators = activeIndicators.filter(name => name !== button.dataset.removeIndicator);
   localStorage.setItem(INDICATORS_KEY, JSON.stringify(activeIndicators));
   renderIndicatorControls();
   renderIndicatorReadouts(chart?.$indicatorCandles || []);
   refreshMarket(true);
 });
-$("#chart-style").addEventListener("change", (event) => {
+$("#chart-style").addEventListener("change", async (event) => {
+  if (!await requireActionSignIn()) { event.target.value = chartStyle; return; }
   chartStyle = event.target.value === "candles" ? "candles" : "line";
   localStorage.setItem("market-chart-style", chartStyle);
   refreshMarket(true);
 });
-$("#chart-interval").addEventListener("change", (event) => {
+$("#chart-interval").addEventListener("change", async (event) => {
+  if (!await requireActionSignIn()) { event.target.value = chartInterval; return; }
   chartInterval = CHART_INTERVALS.includes(event.target.value) ? event.target.value : "1h";
   localStorage.setItem("market-chart-interval", chartInterval);
   refreshMarket(true);
@@ -2163,6 +2214,7 @@ async function sendChatMessage() {
   try {
     const response = await api('/api/chat', {
       method: 'POST',
+      authRequired: false,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, history: previousHistory })
     });
