@@ -337,6 +337,8 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .login-footnote { color: var(--muted); font-size: 10px; line-height: 1.4; border-top: 1px solid var(--border); margin: 18px 0 0; padding-top: 12px; }
 .login-learn-more { margin: 10px 0 0; font-size: 12px; line-height: 1.45; }
 .login-learn-more a { color: #93c5fd; }
+.login-guest { display: flex; align-items: center; justify-content: center; width: 100%; margin-top: 12px; padding: 9px 12px; color: #dbeafe; background: #172554; border-color: #3b82f6; font-size: 12px; text-decoration: none; }
+.login-guest:hover, .login-guest:focus-visible { color: #fff; background: #1e3a8a; border-color: #93c5fd; }
 .turnstile-container { margin: 8px 0; display: flex; justify-content: center; }
 .signed-in-panel { display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .signed-in-panel p { color: var(--muted); }
