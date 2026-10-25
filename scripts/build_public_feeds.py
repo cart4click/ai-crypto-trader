@@ -17,7 +17,8 @@ HEADERS = {"User-Agent": "Cart4Click-Public-Feed/1.0"}
 
 
 def text(value: str | None) -> str:
-    return re.sub(r"\s+", " ", html.unescape(value or "")).strip()
+    value = re.sub(r"<[^>]+>", " ", value or "")
+    return re.sub(r"\s+", " ", html.unescape(value)).strip()
 
 
 def fetch(query: str, limit: int = 18) -> list[dict]:

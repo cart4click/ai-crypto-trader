@@ -1742,7 +1742,12 @@ async function fetchGoogleNewsFeed(query, limit = 10) {
   const feedUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(query)}&hl=en-US&gl=US&ceid=US:en`;
   const localFeed = await fetch("/public-feed.json", { cache: "no-store" }).then(response => response.ok ? response.json() : null).catch(() => null);
   const localItems = query.includes("upcoming") ? localFeed?.events : localFeed?.news;
-  if (Array.isArray(localItems) && localItems.length) return localItems.slice(0, limit);
+  if (Array.isArray(localItems) && localItems.length) return localItems.slice(0, limit).map(item => ({
+    ...item,
+    title: cleanNewsText(item.title || "Crypto headline"),
+    summary: cleanNewsText(item.summary || ""),
+    source: cleanNewsText(item.source || "Public crypto feed"),
+  }));
   const proxyUrls = [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`,
     `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`,
@@ -1924,7 +1929,8 @@ async function refreshNews(force = false) {
     $("#asset-news").innerHTML = focus.map(([symbol, coin]) => {
       const item = (d.items || []).find(article => article.coins?.some(value => value === symbol || value === coin));
       if (!item) return `<div class="asset-news-card"><div class="asset-news-head"><span class="asset-news-coin">${coin}</span><span class="asset-news-source">No recent source headline specifically names ${coin}</span></div></div>`;
-      const summary = item.summary || item.description || "The publisher has not included a summary in its feed. Open the report for the full explanation.";
+      const rawSummary = cleanNewsText(item.summary || item.description || "");
+      const summary = rawSummary ? `${rawSummary.slice(0, 320)}${rawSummary.length > 320 ? "…" : ""}` : "The publisher has not included a summary in its feed. Open the report for the full explanation.";
       const url = safeNewsUrl(item.url);
       return `<article class="asset-news-card">
         <div class="asset-news-head"><span class="asset-news-coin">${coin}</span><span class="asset-news-source">${esc(item.source || "News source")}${item.age ? ` · ${esc(item.age)}` : ""}</span></div>
@@ -1935,7 +1941,7 @@ async function refreshNews(force = false) {
     $("#news-list").innerHTML = (d.items || []).slice(0, 14).map(it => `
       <div class="news-item">
         <div class="news-title">${safeNewsUrl(it.url) ? `<a href="${esc(safeNewsUrl(it.url))}" target="_blank" rel="noopener">${esc(it.title)}</a>` : esc(it.title)}</div>
-        ${it.summary || it.description ? `<p class="asset-news-summary">${esc(it.summary || it.description)}</p>` : ""}
+        ${it.summary || it.description ? `<p class="asset-news-summary">${esc(cleanNewsText(it.summary || it.description).slice(0, 320))}</p>` : ""}
         <div class="news-meta">
           ${sentTag(it.score)}<span>${esc(it.source)}</span>${it.age ? `<span>${esc(it.age)}</span>` : ""}
           ${it.coins?.length ? `<span>${it.coins.map(c => c.replace("USDT", "")).join(", ")}</span>` : ""}

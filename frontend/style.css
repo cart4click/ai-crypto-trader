@@ -166,7 +166,7 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .asset-news-title { font-size: 12px; line-height: 1.4; font-weight: 650; }
 .asset-news-title a { color: var(--text); text-decoration: none; }
 .asset-news-title a:hover { color: var(--blue); }
-.asset-news-summary { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 5px 0 0; }
+.asset-news-summary { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 5px 0 0; overflow-wrap: anywhere; }
 .asset-news-summary b { color: var(--text); font-weight: 600; }
 .news-source-note { margin: 7px 0; line-height: 1.4; }
 .indicator-display-note { margin-top: 5px; line-height: 1.4; }
