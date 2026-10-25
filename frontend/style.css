@@ -233,6 +233,17 @@ button.btn.tiny { padding: 3px 8px; font-size: 11px; margin-top: 6px; }
 .asset-news-coin { color: #bfdbfe; background: rgba(59,130,246,.16); border-radius: 5px; padding: 2px 6px; font-size: 10px; font-weight: 700; }
 .asset-news-source { color: var(--muted); font-size: 10px; }
 .asset-news-title { font-size: 12px; line-height: 1.4; font-weight: 650; }
+.risk-radar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.risk-level { padding: 3px 7px; border-radius: 999px; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.risk-level.loading { color: var(--muted); background: rgba(148,163,184,.12); }
+.risk-level.lower { color: #bbf7d0; background: #14532d; }
+.risk-level.moderate { color: #fde68a; background: #713f12; }
+.risk-level.high { color: #fecaca; background: #7f1d1d; }
+.risk-radar-box { display: grid; gap: 7px; margin-top: 9px; }
+.risk-metric { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--card2); font-size: 11px; }
+.risk-metric span { color: var(--muted); }
+.risk-metric b { color: var(--text); text-align: right; }
+.risk-radar-note { margin: 9px 0 0; line-height: 1.35; }
 .watchlist-move { display: inline-flex; gap: 3px; margin-left: auto; }
 .watchlist-move .btn { margin-top: 0; min-width: 24px; padding-inline: 5px; }
 .watch-card[draggable="true"] { cursor: grab; }

@@ -69,6 +69,12 @@
         <div class="news-source-note muted small">Headlines from CoinDesk, The Block, Decrypt, Cointelegraph and the Solana Foundation.</div>
         <button id="btn-news-refresh" class="btn tiny">↻ Refresh news</button>
       </div>
+
+      <div class="card" data-dashboard-panel="risk" hidden>
+        <div class="risk-radar-head"><h3>Risk radar</h3><span id="risk-radar-level" class="risk-level">—</span></div>
+        <div id="risk-radar-box" class="risk-radar-box"><span class="muted small">Sign in to calculate your personal risk view.</span></div>
+        <p class="muted small risk-radar-note">Informational estimates based on your saved watchlist and current market data.</p>
+      </div>
     </section>
 
     <!-- CENTER: chart + forecast -->
@@ -197,6 +203,11 @@
         <h3>🤖 AI Provider Status</h3>
         <div id="ai-status-box"><span class="muted small">Loading...</span></div>
         <button id="btn-ai-status" class="btn tiny">↻ Refresh</button>
+      </div>
+      <div class="card" data-dashboard-panel="risk">
+        <div class="risk-radar-head"><h3>🛡️ Risk radar</h3><span id="risk-radar-market" class="muted small"></span></div>
+        <div id="risk-radar-box" class="risk-radar-box"><span class="muted small">Sign in to measure watchlist risk.</span></div>
+        <p class="muted small risk-radar-note">This is a watchlist risk view, not financial advice or a portfolio guarantee.</p>
       </div>
     </section>
 
